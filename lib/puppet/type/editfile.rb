@@ -1,6 +1,6 @@
 # Puppet Type for editing text files
 # (c)2011 Markus Strauss
-# License: GPLv3
+# License: see LICENSE file
 
 
 Puppet::Type.newtype(:editfile) do
