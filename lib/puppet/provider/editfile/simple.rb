@@ -14,12 +14,11 @@ Puppet::Type.type(:editfile).provide(:simple, :parent => Puppet::Provider) do
   # confine :exists => @resource[:path]
 
   def create
-    replace_regex
-    puts "Creating line #{@resource[:line]}.  Replacing #{replace_regex}." if DEBUG
+    puts "Creating line #{@resource[:line]}.  Replacing #{match_regex}." if DEBUG
     @data = read_file
     to_replace = []
     @data.each_index do |lineno|
-      if @data[lineno] =~ replace_regex
+      if @data[lineno] =~ match_regex
         to_replace << lineno
       end
     end
@@ -36,21 +35,46 @@ Puppet::Type.type(:editfile).provide(:simple, :parent => Puppet::Provider) do
   end
 
   def destroy
-    puts "Destroying line #{resource[:line]}" if VERBOSE
+    puts "Destroying line #{resource[:match]}" if VERBOSE
     @data = read_file
-    @data = @data.select { |l| not l == line }
+    @data = @data.select { |l| not l =~ match_regex }
     myflush
   end
 
   def exists?
-    puts "Checking existence of line '#{resource[:line]}' in file '#{@resource[:path]}':" if VERBOSE
+    if @resource[:ensure] == :absent
+      matches_found?
+    else
+      line_found?
+    end
+  end
+  
+  def matches_found?
+    puts "Checking existence of regexp '#{resource[:match]}' in file '#{@resource[:path]}':" if VERBOSE
     if File.exists?( @resource[:path] )
-      puts "  File exists. Line #{line} exits?" if DEBUG
-      if read_file.select { |l| l == line }.empty?
-        puts "  '#{resource[:line]}' NOT found in file" if VERBOSE
+      puts "  File exists." if DEBUG
+      if read_file.select { |l| l =~ match_regex }.empty?
+        puts "  '#{resource[:match]}' NOT found in file" if VERBOSE
         return false
       else
-        puts "  '#{resource[:line]}' found in file. Resource exists." if VERBOSE
+        puts "  '#{resource[:match]}' found in file. Resource exists." if VERBOSE
+        return true
+      end
+    else
+      puts "  File does NOT exist." if VERBOSE
+      return false
+    end
+  end
+  
+  def line_found?
+    puts "Checking existence of line '#{line_without_break}' in file '#{@resource[:path]}':" if VERBOSE
+    if File.exists?( @resource[:path] )
+      puts "  File exists." if DEBUG
+      if read_file.select { |l| l == line }.empty?
+        puts "  '#{line_without_break}' NOT found in file" if VERBOSE
+        return false
+      else
+        puts "  '#{line_without_break}' found in file. Resource exists." if VERBOSE
         return true
       end
     else
@@ -71,12 +95,20 @@ Puppet::Type.type(:editfile).provide(:simple, :parent => Puppet::Provider) do
     end
   end
   
-  def replace_regex
-    @replace_regex ||= Regexp.new(@resource[:replace])
+  def match_regex
+    @match_regex ||= Regexp.new(@resource[:match])
   end
   
+  def line_without_break
+    if [:present, :absent].include? @resource[:ensure]
+      _line = @resource[:line] || ''
+    else
+      _line = @resource[:ensure]
+    end
+  end
+
   def line
-    @line ||= ( @resource[:line] + $/ )
+    line_without_break + $/
   end
   
   def myflush

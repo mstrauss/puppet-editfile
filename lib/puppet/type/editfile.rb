@@ -8,46 +8,50 @@ Puppet::Type.newtype(:editfile) do
   @doc = "Ensures that a line of text is present (or not) in the given file."
 
   ensurable do
+    nodefault
     
-    defaultto :present
+    newvalue(:absent) do
+      @resource[:line] = ''
+      provider.destroy
+    end
     
-    newvalue(:present) do
+    aliasvalue(:false, :absent)
+    
+    newvalue(/./) do
+      # @resource[:line] = @resource[:ensure]
+      # @resource[:ensure] = :present
       provider.create
     end
     
-    newvalue(:absent) do
-      provider.destroy
+    munge do |value|
+      value = super(value)
+      value,resource[:line] = :present,value unless value.is_a? Symbol
+      value
     end
+    
   end
-
+  
+  newparam( :line ) do
+    desc "This is kind of a 'private' parameter. Do not use!"
+  end
+  
   newparam( :name ) do
     desc "any unique name"
     isnamevar
   end
-
+  
   newparam(:path) do
     desc "The path to the file to edit.  Must be fully qualified."    
   end
 
-  newparam(:line) do
-    desc "A whole line of text you want to have in the file."
-    
-    validate do |line|
-      unless line.instance_of?( String ); raise ArgumentError, "'line' must be a string"; end
-    end
-  end
-
-  newparam(:replace) do
-
-    desc "An optional text which should be removed from the file. It it is a
-      string all substring-matching lines are removed, if it is a regular
-      expression, all matching lines are removed."
-
+  newparam(:match) do
+    desc "The text which should be handled by editfile. Provide a regular
+    expression."
   end
 
   validate do
     self.fail "You need to specify a file path" unless @parameters.include?(:path)
-    self.fail "You need to specify a line you wanna see in the file" unless @parameters.include?(:line)
+    self.fail "You need to specify what to 'ensure'" unless self[:ensure]
   end
 
 end
