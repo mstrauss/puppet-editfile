@@ -7,12 +7,10 @@ Homepage:: https://github.com/mstrauss/puppet-editfile
 == Installation
 
 From the root directory of your Puppet repository:
-
-<code>git clone https://github.com/mstrauss/puppet-editfile.git modules/editfile</code>
+  git clone https://github.com/mstrauss/puppet-editfile.git modules/editfile
 
 If you use submodules:
-
-<code>git submodule add https://github.com/mstrauss/puppet-editfile.git modules/editfile</code>
+  git submodule add https://github.com/mstrauss/puppet-editfile.git modules/editfile
 
 == Usage
 
@@ -25,7 +23,6 @@ If you use submodules:
 * <tt>Parameter "Value"</tt>
 
 To set a specific parameter:
-
   editfile::config { 'sshd: disallow root':
     path   => '/etc/ssh/sshd_config',
     entry  => 'PermitRootLogin',
@@ -36,7 +33,6 @@ To set a specific parameter:
   }
 
 To remove a specific parameter:
-
   editfile::config { 'sshd: revert PermitRootLogin back to defaults':
     path   => '/etc/ssh/sshd_config',
     entry  => 'PermitRootLogin',
@@ -48,7 +44,6 @@ To remove a specific parameter:
 +editfile+ is a custom type (+lib/puppet/type/editfile.rb+) with a single custom provider (+lib/puppet/provider/editfile/simple.rb+). The _simple_ provider can replace lines matching a regular expression with given content.
 
 The example from above without the <tt>editfile::config</tt> wrapper:
-
   editfile { 'sshd: disallow root':   # use a unique, descriptive name
     provider => simple,               # that's the default provider
     path     => '/etc/ssh/sshd_config',
