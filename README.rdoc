@@ -1,0 +1,80 @@
+= README
+
+_editfile_ is a simple Puppet module to edit files through Puppet manifests.  It is intended to be a Ruby-native replacement for Augeas[http://augeas.net].
+
+Homepage:: https://github.com/mstrauss/puppet-editfile
+
+== Installation
+
+From the root directory of your Puppet repository:
+
+<code>git clone https://github.com/mstrauss/puppet-editfile.git modules/editfile</code>
+
+If you use submodules:
+
+<code>git submodule add https://github.com/mstrauss/puppet-editfile.git modules/editfile</code>
+
+== Usage
+
+=== editfile::config
+
+<tt>editfile::config</tt> is a define (+manifests/config.pp+) which makes use of the custom type +editfile+.  It manages files with entries like
+* <tt>Parameter=Value</tt> or
+* <tt>Parameter Value</tt> or
+* <tt>Parameter="Value"</tt> or
+* <tt>Parameter "Value"</tt>
+
+To set a specific parameter:
+
+  editfile::config { 'sshd: disallow root':
+    path   => '/etc/ssh/sshd_config',
+    entry  => 'PermitRootLogin',
+    ensure => 'no',       # the value shall be 'no'
+    quote  => false,      # not quoted (that's the default)
+    sep    => ' ',        # use space to separate the parameter from its value
+                          # (default is '=')
+  }
+
+To remove a specific parameter:
+
+  editfile::config { 'sshd: revert PermitRootLogin back to defaults':
+    path   => '/etc/ssh/sshd_config',
+    entry  => 'PermitRootLogin',
+    ensure => absent,     # the parameter be removed
+  }
+
+=== editfile
+
++editfile+ is a custom type (+lib/puppet/type/editfile.rb+) with a single custom provider (+lib/puppet/provider/editfile/simple.rb+). The _simple_ provider can replace lines matching a regular expression with given content.
+
+The example from above without the <tt>editfile::config</tt> wrapper:
+
+  editfile { 'sshd: disallow root':   # use a unique, descriptive name
+    provider => simple,               # that's the default provider
+    path     => '/etc/ssh/sshd_config',
+    match    => '^#?\s*PermitRootLogin\s?\s',   # match all these lines
+    ensure   => 'PermitRootLogin no',           # and replace with this
+  }
+
+
+== Motivation
+
+The basic motivation for creating _editfile_ was to have a simple, Ruby-native way of modifying system configuration files with Puppet.
+
+_editfile_ should support the most important use cases for which you would have used Augeas before.
+
+=== Problems with Augeas
+* On some (older) systems it may be very difficult to get Augeas up-and-running.  You may need to build Augeas from sources and you may not want to have development files and/or build tools on your production machines.  So you would need to manage your own Augeas RPM/DEBs/whatever.
+* Augeas often seems way too impractical.  When there is no "Lens" for the file format you have on hands, there is no way to use Augeas.  Even if there _is_ a Lens, but the source path of your file is not _hard_ _coded_ (yuck!!!) into the Lens, it is very difficult to make Puppet/Augeas manage that file.
+* Even _if_ you managed to get Puppet/Augeas working with your file, it sometimes -seemingly randomly and mostly silently- refuses to apply changes.  This can be a very frustrating experience.
+* Augeas is Linux-only.  Puppet supports way more platforms (e.g. Windows).
+* Augeas is usually overkill for the tasks generally at hand.
+
+== Module Design
+
+TBD.
+
+== Legal
+Author:: Markus Strauss (mailto:markus@itstrauss.eu)
+Copyright:: Copyright (c) 2011 by Markus Strauss
+License:: Attached
