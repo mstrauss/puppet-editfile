@@ -1,4 +1,4 @@
-define editfile::config( $path, $entry, $ensure, $sep = '=', $quote = true ) {
+define editfile::config( $path, $entry, $ensure, $sep = '=', $quote = false ) {
 
   if $quote == true {
     $_ensure = "${entry}${sep}\"${ensure}\""
