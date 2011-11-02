@@ -49,6 +49,11 @@ Puppet::Type.type(:editfile).provide(:simple, :parent => Puppet::Provider) do
   
   private
   
+  # this is the default provider for the editfile type
+  def self.default?
+    true
+  end
+  
   def matches_found?
     Puppet.debug "Editfile::Simple: Checking existence of regexp '#{resource[:match]}' in file '#{@resource[:path]}':"
     if File.exists?( @resource[:path] )
