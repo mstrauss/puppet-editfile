@@ -4,7 +4,11 @@
 
 Puppet.debug "Editfile::Yaml: Loading provider"
 
-require 'hashie'
+begin
+  require 'hashie'
+rescue LoadError
+  Puppet.err('Editfile::Yaml needs hashie.  Please run "gem install hashie".')
+end
 
 Puppet::Type.type(:editfile).provide(:yaml, :parent => Puppet::Provider) do
 
