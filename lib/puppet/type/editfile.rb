@@ -18,8 +18,6 @@ Puppet::Type.newtype(:editfile) do
     aliasvalue(:false, :absent)
     
     newvalue(/./) do
-      # @resource[:line] = @resource[:ensure]
-      # @resource[:ensure] = :present
       provider.create
     end
     
