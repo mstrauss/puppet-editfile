@@ -2,9 +2,7 @@
 # (c)2011 Markus Strauss <Markus@ITstrauss.eu>
 # License: see LICENSE file
 
-VERBOSE = true
-DEBUG = false
-puts "Loading provider editfile/editfile." if DEBUG
+Puppet.debug "Editfile::Simple: Loading provider"
 
 Puppet::Type.type(:editfile).provide(:simple, :parent => Puppet::Provider) do
 
@@ -14,7 +12,7 @@ Puppet::Type.type(:editfile).provide(:simple, :parent => Puppet::Provider) do
   # confine :exists => @resource[:path]
 
   def create
-    puts "Creating line #{@resource[:line]}.  Replacing #{match_regex}." if DEBUG
+    Puppet.debug "Editfile::Simple: Creating line #{@resource[:line]}.  Replacing #{match_regex}."
     @data = read_file
     to_replace = []
     @data.each_index do |lineno|
@@ -23,10 +21,10 @@ Puppet::Type.type(:editfile).provide(:simple, :parent => Puppet::Provider) do
       end
     end
     if to_replace.empty?
-      puts 'Nothing found. Creating the entry on the end of the file.' if VERBOSE
+      Puppet.debug 'Editfile::Simple: Nothing found. Creating the entry on the end of the file.'
       @data << line
     else
-      puts "Content found on these lines: #{to_replace.join ','}" if VERBOSE
+      Puppet.debug "Editfile::Simple: Content found on these lines: #{to_replace.join ','}"
       to_replace.each do |lineno|
         @data[lineno] = line
       end
@@ -35,7 +33,7 @@ Puppet::Type.type(:editfile).provide(:simple, :parent => Puppet::Provider) do
   end
 
   def destroy
-    puts "Destroying line #{resource[:match]}" if VERBOSE
+    Puppet.debug "Editfile::Simple: Destroying line #{resource[:match]}"
     @data = read_file
     @data = @data.select { |l| not l =~ match_regex }
     myflush
@@ -49,48 +47,49 @@ Puppet::Type.type(:editfile).provide(:simple, :parent => Puppet::Provider) do
     end
   end
   
+  private
+  
   def matches_found?
-    puts "Checking existence of regexp '#{resource[:match]}' in file '#{@resource[:path]}':" if VERBOSE
+    Puppet.debug "Editfile::Simple: Checking existence of regexp '#{resource[:match]}' in file '#{@resource[:path]}':"
     if File.exists?( @resource[:path] )
-      puts "  File exists." if DEBUG
+      Puppet.debug "Editfile::Simple: File exists."
       if read_file.select { |l| l =~ match_regex }.empty?
-        puts "  '#{resource[:match]}' NOT found in file" if VERBOSE
+        Puppet.debug "Editfile::Simple: '#{resource[:match]}' NOT found in file"
         return false
       else
-        puts "  '#{resource[:match]}' found in file. Resource exists." if VERBOSE
+        Puppet.debug "Editfile::Simple: '#{resource[:match]}' found in file. Resource exists."
         return true
       end
     else
-      puts "  File does NOT exist." if VERBOSE
+      Puppet.debug "Editfile::Simple: File does NOT exist."
       return false
     end
   end
   
   def line_found?
-    puts "Checking existence of line '#{line_without_break}' in file '#{@resource[:path]}':" if VERBOSE
+    Puppet.debug "Editfile::Simple: Checking existence of line '#{line_without_break}' in file '#{@resource[:path]}':"
     if File.exists?( @resource[:path] )
-      puts "  File exists." if DEBUG
+      Puppet.debug "Editfile::Simple: File exists."
       if read_file.select { |l| l == line }.empty?
-        puts "  '#{line_without_break}' NOT found in file" if VERBOSE
+        Puppet.debug "Editfile::Simple: '#{line_without_break}' NOT found in file"
         return false
       else
-        puts "  '#{line_without_break}' found in file. Resource exists." if VERBOSE
+        Puppet.debug "Editfile::Simple: '#{line_without_break}' found in file. Resource exists."
         return true
       end
     else
-      puts "  File does NOT exist." if VERBOSE
+      Puppet.debug "Editfile::Simple: File does NOT exist."
       return false
     end
   end
 
-  private
-
   def read_file
-    puts "Reading file '#{@resource[:path]}'" if DEBUG
+    Puppet.debug "Editfile::Simple: Reading file '#{@resource[:path]}'"
     begin
       IO.readlines( @resource[:path] )
     rescue
       # an empty 'file'
+      Puppet.debug "Editfile::Simple: File does NOT exist."
       ['']
     end
   end
@@ -112,7 +111,7 @@ Puppet::Type.type(:editfile).provide(:simple, :parent => Puppet::Provider) do
   end
   
   def myflush
-    puts "Flushing to file #{@resource[:path]}." if DEBUG
+    Puppet.debug "Editfile::Simple: Flushing to file #{@resource[:path]}."
     File.open( @resource[:path], "w" ) do |f|
       f.write( @data )
       f.close
