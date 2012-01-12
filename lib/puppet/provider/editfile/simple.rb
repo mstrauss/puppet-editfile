@@ -14,19 +14,31 @@ Puppet::Type.type(:editfile).provide(:simple, :parent => Puppet::Provider) do
   def create
     Puppet.debug "Editfile::Simple: Creating line #{@resource[:line]}.  Replacing #{match_regex}."
     @data = read_file
-    to_replace = []
+    match_lines = []
     @data.each_index do |lineno|
       if @data[lineno] =~ match_regex
-        to_replace << lineno
+        match_lines << lineno
       end
     end
-    if to_replace.empty?
+    if match_lines.empty?
       Puppet.debug 'Editfile::Simple: Nothing found. Creating the entry on the end of the file.'
       @data << line
     else
-      Puppet.debug "Editfile::Simple: Content found on these lines: #{to_replace.join ','}"
-      to_replace.each do |lineno|
-        @data[lineno] = line
+      exclude_lines = []
+      updated = false
+      Puppet.debug "Editfile::Simple: Content found on these lines: #{match_lines.join ','}"
+      match_lines.each do |lineno|
+        if @data[lineno] !~ commented_line_regex
+          @data[lineno] = line
+          updated = true
+        else
+          Puppet.debug "Editfile::Simple: Lines: #{lineno} excluded"
+          exclude_lines << lineno
+        end
+      end
+      if ! updated
+        Puppet.debug "Editfile::Simple: Nothing updated: updating the latest excluded line #{exclude_lines[exclude_lines.length - 1]}"
+        @data[exclude_lines[exclude_lines.length - 1]] = line
       end
     end
     myflush
@@ -101,6 +113,10 @@ Puppet::Type.type(:editfile).provide(:simple, :parent => Puppet::Provider) do
   
   def match_regex
     @match_regex ||= Regexp.new(@resource[:match])
+  end
+
+  def commented_line_regex
+    @commented_line_regex ||= Regexp.new("^#")
   end
   
   def line_without_break
