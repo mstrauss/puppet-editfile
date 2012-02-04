@@ -15,18 +15,26 @@ Puppet::Type.type(:editfile).provide(:simple, :parent => Puppet::Provider) do
     Puppet.debug "Editfile::Simple: Creating line #{@resource[:line]}.  Replacing #{match_regex}."
     @data = read_file
     to_replace = []
-    @data.each_index do |lineno|
-      if @data[lineno] =~ match_regex
-        to_replace << lineno
+    if line_multiline?
+      if matches_found?
+        @data = @data.join.gsub( match_regex, line )
+      else
+        @data << line
       end
-    end
-    if to_replace.empty?
-      Puppet.debug 'Editfile::Simple: Nothing found. Creating the entry on the end of the file.'
-      @data << line
     else
-      Puppet.debug "Editfile::Simple: Content found on these lines: #{to_replace.join ','}"
-      to_replace.each do |lineno|
-        @data[lineno] = line
+      @data.each_index do |lineno|
+        if @data[lineno] =~ match_regex
+          to_replace << lineno
+        end
+      end
+      if to_replace.empty?
+        Puppet.debug 'Editfile::Simple: Nothing found. Creating the entry on the end of the file.'
+        @data << line
+      else
+        Puppet.debug "Editfile::Simple: Content found on these lines: #{to_replace.join ','}"
+        to_replace.each do |lineno|
+          @data[lineno] = line
+        end
       end
     end
     myflush
@@ -58,7 +66,12 @@ Puppet::Type.type(:editfile).provide(:simple, :parent => Puppet::Provider) do
     Puppet.debug "Editfile::Simple: Checking existence of regexp '#{resource[:match]}' in file '#{@resource[:path]}':"
     if File.exists?( @resource[:path] )
       Puppet.debug "Editfile::Simple: File exists."
-      if read_file.select { |l| l =~ match_regex }.empty?
+      if line_multiline?
+        Puppet.debug "Line is a multiline string! Therefore we match over the whole file at once."
+        status = read_file.join =~ match_regex
+        Puppet.debug "Match found at position: #{status}"
+        return status
+      elsif read_file.select { |l| l =~ match_regex }.empty?
         Puppet.debug "Editfile::Simple: '#{resource[:match]}' NOT found in file"
         return false
       else
@@ -75,7 +88,12 @@ Puppet::Type.type(:editfile).provide(:simple, :parent => Puppet::Provider) do
     Puppet.debug "Editfile::Simple: Checking existence of line '#{line_without_break}' in file '#{@resource[:path]}':"
     if File.exists?( @resource[:path] )
       Puppet.debug "Editfile::Simple: File exists."
-      if read_file.select { |l| l == line }.empty?
+      if line_multiline?
+        Puppet.debug "Line is a multiline string! Performing a grep over the whole file."
+        status = read_file.join.include?( line )
+        Puppet.debug "Multiline string found: #{status}"
+        return status
+      elsif read_file.select { |l| l == line }.empty?
         Puppet.debug "Editfile::Simple: '#{line_without_break}' NOT found in file"
         return false
       else
@@ -100,7 +118,7 @@ Puppet::Type.type(:editfile).provide(:simple, :parent => Puppet::Provider) do
   end
   
   def match_regex
-    @match_regex ||= Regexp.new(@resource[:match])
+    @match_regex ||= Regexp.new( "(#{@resource[:match]})" )
   end
   
   def line_without_break
@@ -113,6 +131,10 @@ Puppet::Type.type(:editfile).provide(:simple, :parent => Puppet::Provider) do
 
   def line
     line_without_break + $/
+  end
+  
+  def line_multiline?
+    line_without_break.include? $/
   end
   
   def myflush
