@@ -118,6 +118,9 @@ Puppet::Type.type(:editfile).provide(:simple, :parent => Puppet::Provider) do
   end
   
   def match_regex
+    # match.nil_or_empty? should be prohibited by the type
+    throw( 'If you wanna replace the whole file, do not use Editfile! Aborting.' ) if  @resource[:match].nil? or @resource[:match] == ''
+
     @match_regex ||= Regexp.new( "(#{@resource[:match]})" )
   end
   

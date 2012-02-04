@@ -48,6 +48,7 @@ Puppet::Type.newtype(:editfile) do
   end
 
   validate do
+    self[:match] = :undef if self[:match].nil? or self[:match] == ''
     self.fail "You need to specify a file path" unless @parameters.include?(:path)
     self.fail "You need to specify what to 'ensure'" unless self[:ensure]
   end
