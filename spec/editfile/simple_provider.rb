@@ -45,14 +45,29 @@ describe simple_provider do
   
   describe 'single line mode' do
     
-    it 'should detect the missing ensure-line (and declare the resource missing)' do
+    it 'should recognise a single-line-ensure as such' do
+      editfile.send( :line_multiline? ).should be_false
+    end
+
+    it 'should detect a missing ensure-line (and declare the resource missing)' do
       editfile.exists?.should be_false
+    end
+    
+    it 'should detect a present ensure-line (and declare the resource present)' do
+      input_data "This is the result line.#{$/}"
+      editfile.exists?.should be_true
     end
     
     it 'should replace exactly the matching line' do
       input_data "Test-File#{$/}This is the present line.#{$/}"
       apply_ressource :match => :present
       expect_data "Test-File#{$/}This is the result line.#{$/}"
+    end
+    
+    it 'should replace all matching lines' do
+      input_data "Line 1#{$/}Line 2#{$/}Line 3#{$/}"
+      apply_ressource :match => 'Line', :ensure => 'Result'
+      expect_data "Result#{$/}Result#{$/}Result#{$/}"
     end
 
     it 'should append the line if no match is provided' do
@@ -67,6 +82,11 @@ describe simple_provider do
       expect_data "Test-File#{$/}This is the present line.#{$/}This is the result line.#{$/}"
     end
 
+    # it 'should support backreferences' do
+    #   input_data "Line 1#{$/}Line 2#{$/}Line 3#{$/}"
+    #   apply_ressource :match => '^Line([^$])+$', :ensure => 'X\1'+$/
+    #   expect_data "Result 1#{$/}Result 2#{$/}Result 3#{$/}"
+    # end
     
     # it 'should append the line if no match is provided and the file does not end with a newline character' do
     #   input_data "Test-File#{$/}This is the present line."
@@ -79,7 +99,28 @@ describe simple_provider do
     # end
     
 
-  end
+  end # single line mode
   
+  
+  describe 'multi-line mode' do
+    
+    before do
+      input_data "Line 1#{$/}Line 2#{$/}Line 3#{$/}"
+    end
+  
+    it 'should recognise a multi-line-ensure as such' do
+      editfile( :ensure => "Line 2#{$/}Line 3" ).send( :line_multiline? ).should be_true
+    end
+    
+    it 'should detect a present multi-line-ensure' do
+      editfile( :ensure => "Line 2#{$/}Line 3" ).exists?.should be_true
+    end
+    
+    it 'should detect an absent multi-line-ensure' do
+      editfile( :ensure => "Line 3#{$/}Line 2").exists?.should be_false
+    end
+    
+  end
+    
 end
 
