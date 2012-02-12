@@ -48,13 +48,13 @@ describe simple_provider do
     it 'should recognize a regexp match parameter as such' do
       regexp = editfile( :match => '/test/i' ).send( :match_regex )
       regexp.is_a?(Regexp).should be_true
-      regexp.to_s.should == '(?-mix:^.*(?>(?i-mx:test)).*\n)'
+      regexp.to_s.should == '(?-mix:^.*(?>(?i-mx:test)).*$)'
     end
     
     it 'should convert a string match parameter to a regexp' do
       regexp = editfile( :match => 'test' ).send( :match_regex )
       regexp.is_a?(Regexp).should be_true
-      regexp.to_s.should == '(?-mix:^.*(?>test).*\n)'
+      regexp.to_s.should == '(?-mix:^.*(?>test).*$)'
     end
 
     # it 'should abort when a string match looks like a regexp' do
@@ -104,7 +104,7 @@ describe simple_provider do
 
     it 'should support backreferences (exact matching)' do
       input_data "Line 1#{$/}Line 2#{$/}Line 3#{$/}"
-      apply_ressource :match => '^Line (.*)\n', :ensure => 'Result \1', :exact => true
+      apply_ressource :match => '^Line (.*)\n', :ensure => "Result \\1\n", :exact => true
       expect_data "Result 1#{$/}Result 2#{$/}Result 3#{$/}"
     end
 
@@ -124,16 +124,24 @@ describe simple_provider do
       editfile( :ensure => "Line 3#{$/}Line 2").exists?.should be_false
     end
 
-    it 'should append the line if no match is provided and the file does not end with a newline character' do
-      input_data "Test-File#{$/}This is the present line."
-      apply_ressource :match => :undef
-      # FixMe: the state of the file ($/ present or not) is not preserved
-      expect_data "Test-File#{$/}This is the present line.#{$/}This is the result line."
+    describe 'should append the line if no match is provided' do
+      it 'without EOL at EOF' do
+        input_data "Test-File#{$/}This is the present line."
+        apply_ressource :match => :undef
+        expect_data "Test-File#{$/}This is the present line.#{$/}This is the result line."
+      end
+
+      it 'with EOL at EOF' do
+        input_data "Test-File#{$/}This is the present line.#{$/}"
+        apply_ressource :match => :undef
+        expect_data "Test-File#{$/}This is the present line.#{$/}This is the result line.#{$/}"
+      end
     end
     
-    # real-life multi-line examples
     
-    it 'should handle example 1 well' do
+    # === real-life (multi-line) examples ===
+    
+    it 'should handle the varnish example' do
       input_data 'Line 1
 Line 2
 Line 3
@@ -156,19 +164,19 @@ DAEMON_OPTS="-a :80 \
 '
     end
     
-    it 'should handle example 2 well (exact matching)' do
-      input_data "\# a comment line#{$/}UMASK\t002\n"
-      apply_ressource :match => '^UMASK.*\n', :ensure => "UMASK\t022", :exact => true
-      expect_data "\# a comment line#{$/}UMASK\t022\n"
+    it 'should handle the umask example well (exact matching)' do
+      input_data "\# a comment line#{$/}UMASK\t002#{$/}"
+      apply_ressource :match => '^UMASK.*\n', :ensure => "UMASK\t022\n", :exact => true
+      expect_data "\# a comment line#{$/}UMASK\t022#{$/}"
     end
 
-    it 'should handle example 3 well' do
-      input_data "\# a comment line#{$/}UMASK\t002\n"
+    it 'should handle the umask example well' do
+      input_data "\# a comment line#{$/}UMASK\t002#{$/}"
       apply_ressource :match => '^UMASK', :ensure => "UMASK\t022"
-      expect_data "\# a comment line#{$/}UMASK\t022\n"
+      expect_data "\# a comment line#{$/}UMASK\t022#{$/}"
     end
     
-    it 'should handle example 4 well' do
+    it 'should handle the MatchUser present example' do
       input_data '# a sample sshd config
 Match User username
   ForceCommand internal-sftp
@@ -183,7 +191,7 @@ Match User otheruser
   ForceCommand internal-sftp
   ChrootDirectory /home/username
   PasswordAuthentication yes'
-        expect_data '# a sample sshd config
+      expect_data '# a sample sshd config
 Match User username
   ForceCommand internal-sftp
   ChrootDirectory /home/username
@@ -195,7 +203,7 @@ Match User otheruser
 # end of example'
     end
 
-    it 'should handle example 5 well' do
+    it 'should handle the MatchUser missing example' do
       input_data '# a sample sshd config
 Match User otheruser
   ForceCommand internal-sftp
@@ -206,7 +214,7 @@ Match User otheruser
   ForceCommand internal-sftp
   ChrootDirectory /home/username
   PasswordAuthentication yes'
-        expect_data '# a sample sshd config
+      expect_data '# a sample sshd config
 Match User otheruser
   ForceCommand internal-sftp
   ChrootDirectory /home/otheruser
@@ -218,7 +226,7 @@ Match User username
   PasswordAuthentication yes'
     end
 
-    it 'should handle example 6 well' do
+    it 'should handle the MatchUser present but not correct example' do
       input_data '# a sample sshd config
 Match User username
   PasswordAuthentication no
@@ -231,7 +239,7 @@ Match User otheruser
   ForceCommand internal-sftp
   ChrootDirectory /home/username
   PasswordAuthentication yes'
-        expect_data '# a sample sshd config
+      expect_data '# a sample sshd config
 Match User username
   ForceCommand internal-sftp
   ChrootDirectory /home/username
@@ -243,26 +251,40 @@ Match User otheruser
 # end of example'
     end
     
-#     it 'should handle the lookbehind example well (insert before specific line)' do
-#       input_data 'first line
-# last line'
-#       apply_ressource :match => '(PARAMETER=123)?(^last line$)', :ensure => "PARAMETER=123\n\\2", :exact => true
-#       expect_data 'first line
-# PARAMETER=123
-# last line
-# '
-#     end
-# 
-#     it 'should handle the lookbehind example well (if already present)' do
-#       input_data 'first line
-# PARAMETER=123
-# last line'
-#       apply_ressource :match => '(PARAMETER=123)?(^last line$)', :ensure => "PARAMETER=123\n\\2", :exact => true
-#       expect_data 'first line
-# PARAMETER=123
-# last line
-# '
-#     end
+    it 'should handle the SSLHonorCipherOrder missing example' do
+      input_data "#SSLStrictSNIVHostCheck On\n</IfModule>\n"
+      apply_ressource :match => '^(SSLHonorCipherOrder .+\n)?</IfModule>', :ensure => 'SSLHonorCipherOrder on
+</IfModule>', :exact => false
+      expect_data '#SSLStrictSNIVHostCheck On
+SSLHonorCipherOrder on
+</IfModule>
+'
+    end
+
+    it 'should handle the SSLHonorCipherOrder present example' do
+      input_data "#SSLStrictSNIVHostCheck On\nSSLHonorCipherOrder on\n</IfModule>\n"
+      apply_ressource :match => '^(SSLHonorCipherOrder .+\n)?</IfModule>', :ensure => 'SSLHonorCipherOrder on
+</IfModule>', :exact => true
+      expect_data "#SSLStrictSNIVHostCheck On\nSSLHonorCipherOrder on\n</IfModule>\n"
+    end
+    
+    describe 'lookbehind match' do
+      
+      after do
+        apply_ressource :match => '\n(PARAMETER=123\n)?(?=last line)', :ensure => "\nPARAMETER=123\n", :exact => true
+        expect_data "first line#{$/}PARAMETER=123#{$/}last line"
+      end
+
+      it 'should insert before specific line' do
+        input_data "first line#{$/}last line"
+      end
+
+      it 'should do nothing if already present' do
+        input_data "first line#{$/}PARAMETER=123#{$/}last line"
+      end
+
+    end
+
 
   end # create
   

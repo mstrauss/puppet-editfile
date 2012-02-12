@@ -20,7 +20,7 @@ Puppet::Type.type(:editfile).provide(:simple, :parent => Puppet::Provider) do
       Puppet.debug "Appending '#{line}'"
       if @data[-1,1] == $/
         # newline at the end, proceed as usual
-        @data << line
+        @data << line_with_break
       else
         # no newline, we keep that state:
         @data << $/ << line_without_break
@@ -33,7 +33,7 @@ Puppet::Type.type(:editfile).provide(:simple, :parent => Puppet::Provider) do
     throw_on_missing_match       
     Puppet.debug "Editfile::Simple: Destroying line '#{resource[:match]}', #{match_regex}"
     @data = read_file_as_string
-    @data.gsub!( match_regex, '' )
+    @data.gsub!( match_with_eol_regex, '' )
     myflush
   end
 
@@ -108,8 +108,9 @@ Puppet::Type.type(:editfile).provide(:simple, :parent => Puppet::Provider) do
     end
     
     unless @resource[:exact]
-      # mangle regexp for line-matching
-      @match_regex = /^.*(?>#{m}).*\n/
+      # mangle regexp for line-matching - we anchor at EOL (and EOF) but do not include
+      # these in the match
+      @match_regex = /^.*(?>#{m}).*$/
     else
       @match_regex = Regexp.new( m )
     end
@@ -127,12 +128,27 @@ Puppet::Type.type(:editfile).provide(:simple, :parent => Puppet::Provider) do
     # end
   end
   
+  # this is needed for deletions, when we wanna replace the whole line with an empty string;
+  # only applies to non-exact operations
+  def match_with_eol_regex
+    return match_regex if resource[:exact]
+    return /^(?>#{match_regex})#{$/}/
+  end
+  
   def line_without_break
     @resource[:line].chomp || ''
   end
 
-  def line
+  def line_with_break
     line_without_break + $/
+  end
+  
+  def line
+    if @resource[:exact]
+      @resource[:line]
+    else
+      line_without_break
+    end
   end
   
   def myflush
