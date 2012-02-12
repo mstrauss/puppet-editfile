@@ -268,7 +268,7 @@ SSLHonorCipherOrder on
       expect_data "#SSLStrictSNIVHostCheck On\nSSLHonorCipherOrder on\n</IfModule>\n"
     end
     
-    describe 'lookbehind match' do
+    describe 'lookahead match' do
       
       after do
         apply_ressource :match => '\n(PARAMETER=123\n)?(?=last line)', :ensure => "\nPARAMETER=123\n", :exact => true
