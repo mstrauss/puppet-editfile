@@ -28,3 +28,8 @@ RSpec::Core::RakeTask.new do |t|
     t.pattern ='spec/editfile/**/*.rb'
     t.fail_on_error = true
 end
+
+
+task :apply_example do
+  sh %{puppet apply --modulepath=/etc/puppet/modules --debug --noop doc/example_manifest.pp}
+end
