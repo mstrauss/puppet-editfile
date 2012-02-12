@@ -65,9 +65,19 @@ describe simple_provider do
   
   describe 'create' do
     
-    # it 'should recognise a single-line-ensure as such' do
-    #   editfile.send( :line_multiline? ).should be_false
-    # end
+    describe 'when match-regexp is found, but ensure-regexp is also found' do
+      
+      it 'should, by default, declare the resource present' do
+        input_data "Line 1#{$/}This is the result line.#{$/}bar#{$/}"
+        editfile.exists?.should be_true
+      end
+    
+      it 'should declare the resource absent if _always_ensure_matches_ is true' do
+        input_data "Line 1#{$/}This is the result line.#{$/}bar#{$/}"
+        editfile( :always_ensure_matches => true ).exists?.should be_false
+      end
+      
+    end
 
     it 'should detect a missing ensure-line (and declare the resource missing)' do
       editfile.exists?.should be_false

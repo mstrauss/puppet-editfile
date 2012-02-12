@@ -42,8 +42,13 @@ Puppet::Type.type(:editfile).provide(:simple, :parent => Puppet::Provider) do
       # the resource exists -meaning, there are data to be purged- if matches are found
       matches_found?
     else
-      # the resource does NOT exist, if matches are found OR the ensure-line is not present
-      not ( matches_found? or !line_found? )
+      if @resource[:always_ensure_matches].is_a?(TrueClass)
+        # the resource does NOT exist, if matches are found OR the ensure-line is not present
+        not ( matches_found? or !line_found? )
+      else
+        # the resource does exist, if the ensure-regexp is present
+        line_found?
+      end
     end
   end
   

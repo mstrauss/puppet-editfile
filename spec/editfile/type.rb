@@ -25,7 +25,7 @@ describe editfile do
   
   describe 'basic structure' do
     properties = [:ensure]
-    params = [:name, :provider, :path, :match, :exact]
+    params = [:name, :provider, :path, :match, :exact, :always_ensure_matches]
 
     properties.each do |property|
       it "should have a #{property} property" do
