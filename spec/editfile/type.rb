@@ -25,7 +25,7 @@ describe editfile do
   
   describe 'basic structure' do
     properties = [:ensure]
-    params = [:name, :provider, :path, :match]
+    params = [:name, :provider, :path, :match, :exact]
 
     properties.each do |property|
       it "should have a #{property} property" do
@@ -59,6 +59,14 @@ describe editfile do
       proc { editfile.new( valid_options.merge( :ensure => :absent ) ) }.should_not raise_error
     end
 
+    it "should support true as a value for :exact" do
+      proc { editfile.new( valid_options.merge( :exact => true ) ) }.should_not raise_error
+    end
+
+    it "should support false as a value for :exact" do
+      proc { editfile.new( valid_options.merge( :exact => false ) ) }.should_not raise_error
+    end
+
     # it "should not accept spaces in resourcename" do
     #   proc { editfile.new( valid_options.merge( :name => "foo bar") ) }.should raise_error
     # end
@@ -81,26 +89,37 @@ describe editfile do
     it 'should set match to :undef when match is empty' do
       editfile.new( valid_options.merge( {} ) )[:match].should == :undef
     end
+    
   end
   
   
-  it 'should create a non-existing file' do
-    resource = Puppet::Type.type(:editfile).new(
-      :name  => 'arbitrary_title',
-      :path   => "/tmp/testfile",
-      :ensure => 'absent',
-      :provider => 'simple' )
-      # :line => 'The file should be created with this content.' )
-    catalog = Puppet::Resource::Catalog.new
-    catalog.add_resource( resource )
+  describe 'creating a non-existing file' do
     
-    # debugger
+    it 'should succeed if ensure is present' do
+      resource = Puppet::Type.type(:editfile).new(
+        :name  => 'arbitrary_title',
+        :path   => "/tmp/testfile",
+        :ensure => 'present',
+        :provider => 'simple' )
+      catalog = Puppet::Resource::Catalog.new
+      catalog.add_resource( resource )
+      transaction = Puppet::Transaction.new( catalog )
+      resource_status = transaction.resource_harness.evaluate( resource )
+      resource_status.should_not be_failed
+    end
     
-    transaction = Puppet::Transaction.new( catalog )
-    resource_status = transaction.resource_harness.evaluate( resource )
-    # puts "Resource error: " + resource_status.events.first.message if resource_status.failed
-    # puts resource_status.inspect
-    resource_status.should_not be_failed
+    it 'should fail if ensure is absent' do
+      resource = Puppet::Type.type(:editfile).new(
+        :name  => 'arbitrary_title',
+        :path   => "/tmp/testfile",
+        :ensure => 'absent',
+        :provider => 'simple' )
+      catalog = Puppet::Resource::Catalog.new
+      catalog.add_resource( resource )
+      transaction = Puppet::Transaction.new( catalog )
+      resource_status = transaction.resource_harness.evaluate( resource )
+      resource_status.should be_failed
+    end
+
   end
-  
 end

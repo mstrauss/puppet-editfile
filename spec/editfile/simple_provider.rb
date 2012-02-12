@@ -10,7 +10,7 @@ def simple_provider
 end
 
 def valid_options
-  { :name => 'foo', :path => @tempfile, :ensure => 'This is the result line.' }
+  { :name => 'foo', :path => @tempfile, :ensure => 'This is the result line.', :match => 'bar' }
 end
 
 def editfile( options = {} )
@@ -43,11 +43,31 @@ describe simple_provider do
     tmp.close!
   end
   
-  describe 'single line mode' do
-    
-    it 'should recognise a single-line-ensure as such' do
-      editfile.send( :line_multiline? ).should be_false
+  describe 'structure' do
+
+    it 'should recognize a regexp match parameter as such' do
+      regexp = editfile( :match => '/test/i' ).send( :match_regex )
+      regexp.is_a?(Regexp).should be_true
+      regexp.to_s.should == '(?-mix:^.*(?>(?i-mx:test)).*\n)'
     end
+    
+    it 'should convert a string match parameter to a regexp' do
+      regexp = editfile( :match => 'test' ).send( :match_regex )
+      regexp.is_a?(Regexp).should be_true
+      regexp.to_s.should == '(?-mix:^.*(?>test).*\n)'
+    end
+
+    # it 'should abort when a string match looks like a regexp' do
+    #   proc { editfile( :match => '^.*bla.*\n' ).create }.should raise_error( Puppet::Error )
+    # end
+    
+  end
+  
+  describe 'create' do
+    
+    # it 'should recognise a single-line-ensure as such' do
+    #   editfile.send( :line_multiline? ).should be_false
+    # end
 
     it 'should detect a missing ensure-line (and declare the resource missing)' do
       editfile.exists?.should be_false
@@ -82,45 +102,203 @@ describe simple_provider do
       expect_data "Test-File#{$/}This is the present line.#{$/}This is the result line.#{$/}"
     end
 
-    # it 'should support backreferences' do
-    #   input_data "Line 1#{$/}Line 2#{$/}Line 3#{$/}"
-    #   apply_ressource :match => '^Line([^$])+$', :ensure => 'X\1'+$/
-    #   expect_data "Result 1#{$/}Result 2#{$/}Result 3#{$/}"
-    # end
-    
-    # it 'should append the line if no match is provided and the file does not end with a newline character' do
-    #   input_data "Test-File#{$/}This is the present line."
-    #   apply_ressource :match => :undef
-    #   expect_data [
-    #     'Test-File' + $/,
-    #     'This is the present line.' + $/,
-    #     'This is the result line.',
-    #   ]
-    # end
-    
-
-  end # single line mode
-  
-  
-  describe 'multi-line mode' do
-    
-    before do
+    it 'should support backreferences (exact matching)' do
       input_data "Line 1#{$/}Line 2#{$/}Line 3#{$/}"
+      apply_ressource :match => '^Line (.*)\n', :ensure => 'Result \1', :exact => true
+      expect_data "Result 1#{$/}Result 2#{$/}Result 3#{$/}"
     end
-  
-    it 'should recognise a multi-line-ensure as such' do
-      editfile( :ensure => "Line 2#{$/}Line 3" ).send( :line_multiline? ).should be_true
+
+    it 'should support backreferences' do
+      input_data "Line 1#{$/}Line 2#{$/}Line 3#{$/}"
+      apply_ressource :match => '^Line (.*)', :ensure => 'Result \1'
+      expect_data "Result 1#{$/}Result 2#{$/}Result 3#{$/}"
     end
     
     it 'should detect a present multi-line-ensure' do
+      input_data "Line 1#{$/}Line 2#{$/}Line 3#{$/}"
       editfile( :ensure => "Line 2#{$/}Line 3" ).exists?.should be_true
     end
     
     it 'should detect an absent multi-line-ensure' do
+      input_data "Line 1#{$/}Line 2#{$/}Line 3#{$/}"
       editfile( :ensure => "Line 3#{$/}Line 2").exists?.should be_false
     end
+
+    it 'should append the line if no match is provided and the file does not end with a newline character' do
+      input_data "Test-File#{$/}This is the present line."
+      apply_ressource :match => :undef
+      # FixMe: the state of the file ($/ present or not) is not preserved
+      expect_data "Test-File#{$/}This is the present line.#{$/}This is the result line."
+    end
     
+    # real-life multi-line examples
+    
+    it 'should handle example 1 well' do
+      input_data 'Line 1
+Line 2
+Line 3
+DAEMON_OPTS="-a :80 \
+  -T other \
+  -f config \
+  -S entries"
+'
+      apply_ressource :match => '^DAEMON_OPTS\s?=\s?.+(\n\s+.+)*', :ensure => 'DAEMON_OPTS="-a :80 \
+          -T localhost:6082 \
+          -f /etc/varnish/default.vcl \
+          -S /etc/varnish/secret -s malloc,1G"'
+      input_data 'Line 1
+Line 2
+Line 3
+DAEMON_OPTS="-a :80 \
+  -T localhost:6082 \
+  -f /etc/varnish/default.vcl \
+  -S /etc/varnish/secret -s malloc,1G"
+'
+    end
+    
+    it 'should handle example 2 well (exact matching)' do
+      input_data "\# a comment line#{$/}UMASK\t002\n"
+      apply_ressource :match => '^UMASK.*\n', :ensure => "UMASK\t022", :exact => true
+      expect_data "\# a comment line#{$/}UMASK\t022\n"
+    end
+
+    it 'should handle example 3 well' do
+      input_data "\# a comment line#{$/}UMASK\t002\n"
+      apply_ressource :match => '^UMASK', :ensure => "UMASK\t022"
+      expect_data "\# a comment line#{$/}UMASK\t022\n"
+    end
+    
+    it 'should handle example 4 well' do
+      input_data '# a sample sshd config
+Match User username
+  ForceCommand internal-sftp
+  ChrootDirectory /home/username
+  PasswordAuthentication yes
+Match User otheruser
+  ForceCommand internal-sftp
+  ChrootDirectory /home/otheruser
+  PasswordAuthentication yes
+# end of example'
+      apply_ressource :match => '^Match User username(\n\s+.+)*', :ensure => 'Match User username
+  ForceCommand internal-sftp
+  ChrootDirectory /home/username
+  PasswordAuthentication yes'
+        expect_data '# a sample sshd config
+Match User username
+  ForceCommand internal-sftp
+  ChrootDirectory /home/username
+  PasswordAuthentication yes
+Match User otheruser
+  ForceCommand internal-sftp
+  ChrootDirectory /home/otheruser
+  PasswordAuthentication yes
+# end of example'
+    end
+
+    it 'should handle example 5 well' do
+      input_data '# a sample sshd config
+Match User otheruser
+  ForceCommand internal-sftp
+  ChrootDirectory /home/otheruser
+  PasswordAuthentication yes
+# end of example'
+      apply_ressource :match => '^Match User username(\n\s+.+)*', :ensure => 'Match User username
+  ForceCommand internal-sftp
+  ChrootDirectory /home/username
+  PasswordAuthentication yes'
+        expect_data '# a sample sshd config
+Match User otheruser
+  ForceCommand internal-sftp
+  ChrootDirectory /home/otheruser
+  PasswordAuthentication yes
+# end of example
+Match User username
+  ForceCommand internal-sftp
+  ChrootDirectory /home/username
+  PasswordAuthentication yes'
+    end
+
+    it 'should handle example 6 well' do
+      input_data '# a sample sshd config
+Match User username
+  PasswordAuthentication no
+Match User otheruser
+  ForceCommand internal-sftp
+  ChrootDirectory /home/otheruser
+  PasswordAuthentication yes
+# end of example'
+      apply_ressource :match => '^Match User username(\n\s+.+)*', :ensure => 'Match User username
+  ForceCommand internal-sftp
+  ChrootDirectory /home/username
+  PasswordAuthentication yes'
+        expect_data '# a sample sshd config
+Match User username
+  ForceCommand internal-sftp
+  ChrootDirectory /home/username
+  PasswordAuthentication yes
+Match User otheruser
+  ForceCommand internal-sftp
+  ChrootDirectory /home/otheruser
+  PasswordAuthentication yes
+# end of example'
+    end
+    
+#     it 'should handle the lookbehind example well (insert before specific line)' do
+#       input_data 'first line
+# last line'
+#       apply_ressource :match => '(PARAMETER=123)?(^last line$)', :ensure => "PARAMETER=123\n\\2", :exact => true
+#       expect_data 'first line
+# PARAMETER=123
+# last line
+# '
+#     end
+# 
+#     it 'should handle the lookbehind example well (if already present)' do
+#       input_data 'first line
+# PARAMETER=123
+# last line'
+#       apply_ressource :match => '(PARAMETER=123)?(^last line$)', :ensure => "PARAMETER=123\n\\2", :exact => true
+#       expect_data 'first line
+# PARAMETER=123
+# last line
+# '
+#     end
+
+  end # create
+  
+  
+  describe 'destroy' do
+
+    before do
+      input_data "Abc 1#{$/}Cde 2#{$/}Efg 3#{$/}"
+    end
+    
+    it 'should remove nothing, using undefined match' do
+      proc { editfile( :ensure => :absent ).destroy }.should_not raise_error
+      expect_data "Abc 1#{$/}Cde 2#{$/}Efg 3#{$/}"
+    end
+
+    it 'should remove all matching lines, using string' do
+      proc { editfile( :ensure => :absent, :match => 'C' ).destroy }.should_not raise_error
+      expect_data "Abc 1#{$/}Efg 3#{$/}"
+    end
+    
+    it 'should remove all matching lines, using regexp with newline (exact)' do
+      proc { editfile( :ensure => :absent, :match => '/^.*c.*#{$/}/i', :exact => true ).destroy }.should_not raise_error
+      expect_data "Efg 3#{$/}"
+    end
+    
+    it 'should remove matching characters, using exact regexp' do
+      proc { editfile( :ensure => :absent, :match => '/c/i', :exact => true ).destroy }.should_not raise_error
+      expect_data "Ab 1#{$/}de 2#{$/}Efg 3#{$/}"
+    end
+
+    it 'should remove all matching lines' do
+      proc { editfile( :ensure => :absent, :match => '/c/i' ).destroy }.should_not raise_error
+      expect_data "Efg 3#{$/}"
+    end
+
   end
-    
+  
 end
 

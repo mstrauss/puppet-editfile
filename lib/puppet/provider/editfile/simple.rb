@@ -2,56 +2,48 @@
 # (c)2011 Markus Strauss <Markus@ITstrauss.eu>
 # License: see LICENSE file
 
+require 'puppet/error'
+
 Puppet.debug "Editfile::Simple: Loading provider"
 
 Puppet::Type.type(:editfile).provide(:simple, :parent => Puppet::Provider) do
 
-  desc "Ensures that a line of text is present (or not) in the given file."
-
-  # # the file must exist, otherwise we refuse to manage it
-  # confine :exists => @resource[:path]
+  desc 'Ensures that text matching a regular expression is -or is not- present in the given file.  This is mainly a wrapper for String#gsub, applied on the whole file at once.  Backreferences (\1, \2, etc.) and advanced Oniguruma features are therefore supported.'
 
   def create
-    Puppet.debug "Editfile::Simple: Creating line #{@resource[:line]}.  Replacing #{match_regex}."
-    @data = read_file
-    to_replace = []
-    if line_multiline?
-      if matches_found?
-        @data = @data.join.gsub( match_regex, line )
-      else
-        @data << line
-      end
+    Puppet.debug "Editfile::Simple: Creating line '#{@resource[:line]}'.  Replacing #{match_regex}."
+    @data = read_file_as_string
+    if matches_found?
+      @data.gsub!( match_regex, line )
     else
-      @data.each_index do |lineno|
-        if @data[lineno] =~ match_regex
-          to_replace << lineno
-        end
-      end
-      if to_replace.empty?
-        Puppet.debug 'Editfile::Simple: Nothing found. Creating the entry on the end of the file.'
+      # no match found ==> append at end of file
+      Puppet.debug "Appending '#{line}'"
+      if @data[-1,1] == $/
+        # newline at the end, proceed as usual
         @data << line
       else
-        Puppet.debug "Editfile::Simple: Content found on these lines: #{to_replace.join ','}"
-        to_replace.each do |lineno|
-          @data[lineno] = line
-        end
+        # no newline, we keep that state:
+        @data << $/ << line_without_break
       end
     end
     myflush
   end
 
   def destroy
-    Puppet.debug "Editfile::Simple: Destroying line #{resource[:match]}"
-    @data = read_file
-    @data = @data.select { |l| not l =~ match_regex }
+    throw_on_missing_match       
+    Puppet.debug "Editfile::Simple: Destroying line '#{resource[:match]}', #{match_regex}"
+    @data = read_file_as_string
+    @data.gsub!( match_regex, '' )
     myflush
   end
 
   def exists?
     if @resource[:ensure] == :absent
+      # the resource exists -meaning, there are data to be purged- if matches are found
       matches_found?
     else
-      line_found?
+      # the resource does NOT exist, if matches are found OR the ensure-line is not present
+      not ( matches_found? or !line_found? )
     end
   end
   
@@ -62,22 +54,13 @@ Puppet::Type.type(:editfile).provide(:simple, :parent => Puppet::Provider) do
     true
   end
   
-  def matches_found?
-    Puppet.debug "Editfile::Simple: Checking existence of regexp '#{resource[:match]}' in file '#{@resource[:path]}':"
+  def matches_found?( regexp = match_regex )
+    Puppet.debug "Editfile::Simple: Checking existence of regexp '#{regexp.to_s}' in file '#{@resource[:path]}':"
     if File.exists?( @resource[:path] )
       Puppet.debug "Editfile::Simple: File exists."
-      if line_multiline?
-        Puppet.debug "Line is a multiline string! Therefore we match over the whole file at once."
-        status = read_file.join =~ match_regex
-        Puppet.debug "Match found at position: #{status}"
-        return status
-      elsif read_file.select { |l| l =~ match_regex }.empty?
-        Puppet.debug "Editfile::Simple: '#{resource[:match]}' NOT found in file"
-        return false
-      else
-        Puppet.debug "Editfile::Simple: '#{resource[:match]}' found in file. Resource exists."
-        return true
-      end
+      status = ( read_file_as_string =~ regexp )
+      Puppet.debug "Match found at position: #{status}"
+      return status
     else
       Puppet.debug "Editfile::Simple: File does NOT exist."
       return false
@@ -85,59 +68,71 @@ Puppet::Type.type(:editfile).provide(:simple, :parent => Puppet::Provider) do
   end
   
   def line_found?
-    Puppet.debug "Editfile::Simple: Checking existence of line '#{line_without_break}' in file '#{@resource[:path]}':"
-    if File.exists?( @resource[:path] )
-      Puppet.debug "Editfile::Simple: File exists."
-      if line_multiline?
-        Puppet.debug "Line is a multiline string! Performing a grep over the whole file."
-        status = read_file.join.include?( line )
-        Puppet.debug "Multiline string found: #{status}"
-        return status
-      elsif read_file.select { |l| l == line }.empty?
-        Puppet.debug "Editfile::Simple: '#{line_without_break}' NOT found in file"
-        return false
-      else
-        Puppet.debug "Editfile::Simple: '#{line_without_break}' found in file. Resource exists."
-        return true
-      end
-    else
-      Puppet.debug "Editfile::Simple: File does NOT exist."
-      return false
-    end
+    escaped_line = Regexp.escape( line_without_break )
+    matches_found?( /^#{escaped_line}$/ )
   end
 
-  def read_file
+  def read_file_as_string
     Puppet.debug "Editfile::Simple: Reading file '#{@resource[:path]}'"
     begin
-      IO.readlines( @resource[:path] )
-    rescue
+      IO.read( @resource[:path] )
+    rescue Errno::ENOENT
       # an empty 'file'
       Puppet.debug "Editfile::Simple: File does NOT exist."
-      ['']
+      ''
     end
+  end
+  
+  def throw_on_missing_match
+    throw Puppet::Error.new( 'If you wanna replace/delete the whole file, do not use Editfile, use other means. Aborting.' ) if  @resource[:match].nil? or @resource[:match] == ''
   end
   
   def match_regex
     # match.nil_or_empty? should be prohibited by the type
-    throw( 'If you wanna replace the whole file, do not use Editfile! Aborting.' ) if  @resource[:match].nil? or @resource[:match] == ''
-
-    @match_regex ||= Regexp.new( "(#{@resource[:match]})" )
+    throw_on_missing_match
+    return @match_regex if @match_regex
+    m = @resource[:match]
+    if m.is_a? Symbol
+      if m == :undef
+        m = line_without_break
+      else
+        m = m.to_s
+      end
+    end
+    
+    # first character slash ==> we eval it
+    begin
+      m = eval(m) if m =~ %r{/.*/}
+    rescue
+      throw Puppet::Error.new( 'Unable to compile regular expression.')
+    end
+    
+    unless @resource[:exact]
+      # mangle regexp for line-matching
+      @match_regex = /^.*(?>#{m}).*\n/
+    else
+      @match_regex = Regexp.new( m )
+    end
+      
+    # # abort on regexp strings ==> these should be regexps instead
+    # if m.is_a? String
+    #   if [ '[', ']', '.*', '.+', '^', '$' ].any? { |test| m.include? test }
+    #     raise Puppet::Error.new 'This looks like a Regexp.  Please modify your manifest to use a Regexp instead of a String.  Regexp strings are no longer supported.'
+    #   end
+    #   escaped_match = Regexp.quote( m.chomp )
+    #   @match_regex = /^.*#{escaped_match}.*\n/
+    # else
+    #   # @resource[:match] is then a Regexp hopefully
+    #   @match_regex = m
+    # end
   end
   
   def line_without_break
-    if [:present, :absent].include? @resource[:ensure]
-      _line = @resource[:line] || ''
-    else
-      _line = @resource[:ensure]
-    end
+    @resource[:line].chomp || ''
   end
 
   def line
     line_without_break + $/
-  end
-  
-  def line_multiline?
-    line_without_break.include? $/
   end
   
   def myflush
