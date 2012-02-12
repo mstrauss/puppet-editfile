@@ -18,10 +18,11 @@ editfile {
       ChrootDirectory /home/username
       PasswordAuthentication yes",
     ;
-  # 'insert before specific line':
-  #   path   => '/my/file/path',
-  #   match  => '(?=^insert before this line$)',
-  #   ensure => 'INSERTED BEFORE LAST LINE', :exact => true
-  #   match => '(?=^last line$)', :ensure => 'INSERTED BEFORE LAST LINE', :exact => true
+  'insert before specific line':
+    path   => '/my/file/path',
+    match  => '\n(text to insert\n)?(?=insert before this line$)',
+    ensure => "\ntext to insert\n",
+    exact  => true,
+    ;
 }
 
