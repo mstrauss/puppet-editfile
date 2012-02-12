@@ -4,14 +4,14 @@
 
 require 'puppet/error'
 
-Puppet.debug "Editfile::Simple: Loading provider"
+Puppet.debug "Editfile::Regexp: Loading provider"
 
-Puppet::Type.type(:editfile).provide(:simple, :parent => Puppet::Provider) do
+Puppet::Type.type(:editfile).provide(:regexp, :parent => Puppet::Provider) do
 
   desc 'Ensures that text matching a regular expression is -or is not- present in the given file.  This is mainly a wrapper for String#gsub, applied on the whole file at once.  Backreferences (\1, \2, etc.) and advanced Oniguruma features are therefore supported.'
 
   def create
-    Puppet.debug "Editfile::Simple: Creating line '#{@resource[:line]}'.  Replacing #{match_regex}."
+    Puppet.debug "Editfile::Regexp: Creating line '#{@resource[:line]}'.  Replacing #{match_regex}."
     @data = read_file_as_string
     if matches_found?
       @data.gsub!( match_regex, line )
@@ -31,7 +31,7 @@ Puppet::Type.type(:editfile).provide(:simple, :parent => Puppet::Provider) do
 
   def destroy
     throw_on_missing_match       
-    Puppet.debug "Editfile::Simple: Destroying line '#{resource[:match]}', #{match_regex}"
+    Puppet.debug "Editfile::Regexp: Destroying line '#{resource[:match]}', #{match_regex}"
     @data = read_file_as_string
     @data.gsub!( match_with_eol_regex, '' )
     myflush
@@ -60,14 +60,14 @@ Puppet::Type.type(:editfile).provide(:simple, :parent => Puppet::Provider) do
   end
   
   def matches_found?( regexp = match_regex )
-    Puppet.debug "Editfile::Simple: Checking existence of regexp '#{regexp.to_s}' in file '#{@resource[:path]}':"
+    Puppet.debug "Editfile::Regexp: Checking existence of regexp '#{regexp.to_s}' in file '#{@resource[:path]}':"
     if File.exists?( @resource[:path] )
-      Puppet.debug "Editfile::Simple: File exists."
+      Puppet.debug "Editfile::Regexp: File exists."
       status = ( read_file_as_string =~ regexp )
       Puppet.debug "Match found at position: #{status}"
       return status
     else
-      Puppet.debug "Editfile::Simple: File does NOT exist."
+      Puppet.debug "Editfile::Regexp: File does NOT exist."
       return false
     end
   end
@@ -78,12 +78,12 @@ Puppet::Type.type(:editfile).provide(:simple, :parent => Puppet::Provider) do
   end
 
   def read_file_as_string
-    Puppet.debug "Editfile::Simple: Reading file '#{@resource[:path]}'"
+    Puppet.debug "Editfile::Regexp: Reading file '#{@resource[:path]}'"
     begin
       IO.read( @resource[:path] )
     rescue Errno::ENOENT
       # an empty 'file'
-      Puppet.debug "Editfile::Simple: File does NOT exist."
+      Puppet.debug "Editfile::Regexp: File does NOT exist."
       ''
     end
   end
@@ -157,7 +157,7 @@ Puppet::Type.type(:editfile).provide(:simple, :parent => Puppet::Provider) do
   end
   
   def myflush
-    Puppet.debug "Editfile::Simple: Flushing to file #{@resource[:path]}."
+    Puppet.debug "Editfile::Regexp: Flushing to file #{@resource[:path]}."
     File.open( @resource[:path], "w" ) do |f|
       f.write( @data )
       f.close

@@ -100,7 +100,7 @@ describe editfile do
         :name  => 'arbitrary_title',
         :path   => "/tmp/testfile",
         :ensure => 'present',
-        :provider => 'simple' )
+        :provider => 'regexp' )
       catalog = Puppet::Resource::Catalog.new
       catalog.add_resource( resource )
       transaction = Puppet::Transaction.new( catalog )
@@ -113,7 +113,7 @@ describe editfile do
         :name  => 'arbitrary_title',
         :path   => "/tmp/testfile",
         :ensure => 'absent',
-        :provider => 'simple' )
+        :provider => 'regexp' )
       catalog = Puppet::Resource::Catalog.new
       catalog.add_resource( resource )
       transaction = Puppet::Transaction.new( catalog )

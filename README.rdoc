@@ -41,11 +41,11 @@ To remove a specific parameter:
 
 === editfile
 
-+editfile+ is a custom type (+lib/puppet/type/editfile.rb+) with a single custom provider (+lib/puppet/provider/editfile/simple.rb+). The _simple_ provider can replace lines matching a regular expression with given content.
++editfile+ is a custom type (+lib/puppet/type/editfile.rb+) with a single custom provider (+lib/puppet/provider/editfile/regexp.rb+). The _regexp_ provider can replace lines matching a regular expression with given content.
 
 The example from above without the <tt>editfile::config</tt> wrapper:
   editfile { 'sshd: disallow root':   # use a unique, descriptive name
-    provider => simple,               # that's the default provider
+    provider => regexp,               # that's the default provider
     path     => '/etc/ssh/sshd_config',
     match    => '^#?\s*PermitRootLogin\s?\s',   # match all these lines
     ensure   => 'PermitRootLogin no',           # and replace with this

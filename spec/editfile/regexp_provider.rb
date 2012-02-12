@@ -5,8 +5,8 @@ def editfile_type
   Puppet::Type.type(:editfile)
 end
 
-def simple_provider
-  editfile_type.provider(:simple)
+def regexp_provider
+  editfile_type.provider(:regexp)
 end
 
 def valid_options
@@ -15,7 +15,7 @@ end
 
 def editfile( options = {} )
   resource = editfile_type.new( valid_options.merge( options ) )
-  simple_provider.new( resource )
+  regexp_provider.new( resource )
 end
 
 def input_data( string )
@@ -34,7 +34,7 @@ def apply_ressource( options = {} )
 end
 
 
-describe simple_provider do
+describe regexp_provider do
   
   before do
     # generate new tempfile path
