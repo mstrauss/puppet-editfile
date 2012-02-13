@@ -12,8 +12,7 @@
 # @param[String]  $ensure : set the configuration entry to this value, or use 'absent' to remove the entry $entry
 # @param[String]  $sep    : the separator to use, e.g. set to ' = '
 # @param[Boolean] $quote  : shall the value be quoted, like >> ENTRY = "value" <<
-# @param[Boolean] $remove_dupes : shall duplicate entries be removed
-define editfile::config( $path, $entry = false, $ensure, $sep = '=', $quote = false, $remove_dupes = true ) {
+define editfile::config( $path, $entry = false, $ensure, $sep = '=', $quote = false ) {
 
   if $entry == false {
 
@@ -52,15 +51,6 @@ define editfile::config( $path, $entry = false, $ensure, $sep = '=', $quote = fa
         ensure => $_ensure,
       }
       
-      if $remove_dupes == true {
-        editfile { "${title}-cleanup":
-          # removing duplicate config entries;  the last entry shall survive
-          match  => "/^${_ensure}(?=.*^${_ensure})/m",
-          ensure => absent,
-          ;
-        }
-      }
-
     }
 
   }
