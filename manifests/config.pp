@@ -12,7 +12,8 @@
 # @param[String]  $ensure : set the configuration entry to this value, or use 'absent' to remove the entry $entry
 # @param[String]  $sep    : the separator to use, e.g. set to ' = '
 # @param[Boolean] $quote  : shall the value be quoted, like >> ENTRY = "value" <<
-define editfile::config( $path, $entry = false, $ensure, $sep = '=', $quote = false ) {
+# @param[Boolean] $remove_dupes : shall duplicate entries be removed
+define editfile::config( $path, $entry = false, $ensure, $sep = '=', $quote = false, $remove_dupes = true ) {
 
   if $entry == false {
 
@@ -34,22 +35,25 @@ define editfile::config( $path, $entry = false, $ensure, $sep = '=', $quote = fa
     }
 
     if $ensure == present {
-      editfile {
-        "$title":
-          # either match the with leading pound sign AND no other entry without pound - to replace the deactivated entry
-          # OR
-          # match simply without the pound sign - to replace an active entry
-          # OR
-          # if there is no match, editfile automatically appends our entry at EOF
-          match  => "/^(#?\s*${entry}\s?(?!.*^${entry})|${entry}\s?)/m",
-          ensure => present,
-          ;
-        "$title-cleanup":
+      editfile { "$title":
+        # either match the with leading pound sign AND no other entry without pound - to replace the deactivated entry
+        # OR
+        # match simply without the pound sign - to replace an active entry
+        # OR
+        # if there is no match, editfile automatically appends our entry at EOF
+        match  => "/^(#?\s*${entry}\s?(?!.*^${entry})|${entry}\s?)/m",
+        ensure => present,
+      }
+      
+      if $remove_dupes == true {
+        editfile { "$title-cleanup":
           # removing duplicate config entries;  the last entry shall survive
           match  => "/^${_ensure}(?=.*^${_ensure})/m",
           ensure => absent,
           ;
+        }
       }
+
     } else {
       editfile { "$title":
         # we remove all matching entries, but not the comment lines
