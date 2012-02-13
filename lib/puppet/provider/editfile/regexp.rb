@@ -64,7 +64,7 @@ Puppet::Type.type(:editfile).provide(:regexp, :parent => Puppet::Provider) do
     if File.exists?( @resource[:path] )
       Puppet.debug "Editfile::Regexp: File exists."
       status = ( read_file_as_string =~ regexp )
-      Puppet.debug "Match found at position: #{status}"
+      Puppet.debug( status ? "Match found at position: #{status}" : "No match found." )
       return status
     else
       Puppet.debug "Editfile::Regexp: File does NOT exist."
