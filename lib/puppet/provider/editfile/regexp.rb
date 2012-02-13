@@ -74,13 +74,12 @@ Puppet::Type.type(:editfile).provide(:regexp, :parent => Puppet::Provider) do
   
   def line_found?
     if m = @resource[:creates]
-      # first character slash ==> we eval it
       begin
-        m = eval(m) if m =~ %r{/.*/}
+        m = eval(m)
       rescue
         throw Puppet::Error.new( 'Unable to compile regular expression.')
       end
-      matches_found?( Regexp.new( m ) )
+      matches_found?( m )
     else
       escaped_line = Regexp.escape( line_without_break )
       matches_found?( /^#{escaped_line}$/ )
