@@ -34,8 +34,15 @@ define editfile::config( $path, $entry = false, $ensure, $sep = '=', $quote = fa
       path   => $path,
     }
 
-    if $ensure == present {
+    if $ensure == absent {
       editfile { "$title":
+        # we remove all matching entries, but not the comment lines
+        match  => "^${entry}${sep}",
+        ensure => absent,
+      }
+    } else {
+      
+      editfile { "${title}":
         # either match the with leading pound sign AND no other entry without pound - to replace the deactivated entry
         # OR
         # match simply without the pound sign - to replace an active entry
@@ -46,7 +53,7 @@ define editfile::config( $path, $entry = false, $ensure, $sep = '=', $quote = fa
       }
       
       if $remove_dupes == true {
-        editfile { "$title-cleanup":
+        editfile { "${title}-cleanup":
           # removing duplicate config entries;  the last entry shall survive
           match  => "/^${_ensure}(?=.*^${_ensure})/m",
           ensure => absent,
@@ -54,12 +61,6 @@ define editfile::config( $path, $entry = false, $ensure, $sep = '=', $quote = fa
         }
       }
 
-    } else {
-      editfile { "$title":
-        # we remove all matching entries, but not the comment lines
-        match  => "^${entry}${sep}",
-        ensure => absent,
-      }
     }
 
   }
