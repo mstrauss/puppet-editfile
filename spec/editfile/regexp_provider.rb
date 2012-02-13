@@ -30,7 +30,25 @@ def expect_data( string )
 end
 
 def apply_ressource( options = {} )
-  proc { editfile( options ).create }.should_not raise_error
+  if options[:ensure] == :absent
+    send_method = 'destroy'
+  else
+    send_method = 'create'
+  end
+  proc { editfile( options ).send( send_method ) }.should_not raise_error
+end
+
+def apply_editfile_config( options = {} )
+  sep = ' = '
+  entry = options[:entry]
+  editfile_config_match = "/^(#?\s*#{entry}\s?(?!.*^#{entry})|#{entry}\s?)/m"
+  
+  value = options[:ensure]
+  _ensure = "#{entry}#{sep}#{value}"
+  apply_ressource :match => editfile_config_match, :ensure => _ensure
+
+  # remove duplicate lines
+  apply_ressource :match => "/^#{entry}#{sep}#{value}(?=.*^#{entry}#{sep})/m", :ensure => :absent
 end
 
 
@@ -295,7 +313,34 @@ SSLHonorCipherOrder on
 
     end
 
+    describe 'editfile::config resource' do
+      
+      it 'should update an existing entry' do
+        input_data "# any comment#{$/}FOO=bar"
+        apply_editfile_config :entry => 'FOO', :ensure => 'alice'
+        expect_data "# any comment#{$/}FOO = alice"
+      end
 
+      it 'should update an existing comment if no other entry is present' do
+        input_data "# any comment#{$/}# FOO=bar"
+        apply_editfile_config :entry => 'FOO', :ensure => 'alice'
+        expect_data "# any comment#{$/}FOO = alice"
+      end
+
+      it 'should NOT update an existing comment if another entry IS present' do
+        input_data "# any comment#{$/}# FOO=bar#{$/}FOO=bob"
+        apply_editfile_config :entry => 'FOO', :ensure => 'alice'
+        expect_data "# any comment#{$/}# FOO=bar#{$/}FOO = alice"
+      end
+
+      it 'should update the last uncommented line and remove the others (uncommented lines)' do
+        input_data "# any comment#{$/}FOO=bar#{$/}# FOO ist commented out#{$/}FOO=bob"
+        apply_editfile_config :entry => 'FOO', :ensure => 'alice'
+        expect_data "# any comment#{$/}# FOO ist commented out#{$/}FOO = alice"
+      end
+      
+    end
+    
   end # create
   
   
