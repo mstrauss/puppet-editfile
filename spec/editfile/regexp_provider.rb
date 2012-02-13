@@ -312,6 +312,47 @@ SSLHonorCipherOrder on
       end
 
     end
+    
+    describe 'multiline reordering' do
+      it 'should put the MatchUser block just before EOF' do
+        input_data '# a sample sshd config
+Match User username
+  ChrootDirectory /home/username
+  PasswordAuthentication no
+# end of example'
+        apply_ressource :exact => true, :match => '/(^Match User username.*?)(^\S.*|\Z)/m', :ensure => '\2
+Match User username
+  ForceCommand internal-sftp
+  ChrootDirectory /home/username
+  PasswordAuthentication yes'
+        expect_data '# a sample sshd config
+# end of example
+Match User username
+  ForceCommand internal-sftp
+  ChrootDirectory /home/username
+  PasswordAuthentication yes'
+      end
+
+      it 'should put the MatchUser block just before EOF (variant 2)' do
+        input_data '# a sample sshd config
+Match User username
+  ForceCommand internal-sftp
+  ChrootDirectory /home/username
+  PasswordAuthentication yes'
+        apply_ressource :exact => true, :match => '/(^Match User username.*?)(^\S.*|\Z)/m', :ensure => '\2
+Match User username
+  ForceCommand internal-sftp
+  ChrootDirectory /home/username
+  PasswordAuthentication yes'
+        expect_data '# a sample sshd config
+
+Match User username
+  ForceCommand internal-sftp
+  ChrootDirectory /home/username
+  PasswordAuthentication yes'
+      end
+
+    end
 
     describe 'editfile::config resource' do
       
@@ -339,6 +380,18 @@ SSLHonorCipherOrder on
         expect_data "# any comment#{$/}# FOO ist commented out#{$/}FOO = alice"
       end
       
+    end
+    
+    describe 'override with _creates_' do
+      it 'should not do anything if creates hits' do
+        input_data "Line 1#{$/}This is the result line.#{$/}bar#{$/}"
+        editfile( :creates => '/^Line.*?^bar/m').exists?.should be_true
+      end
+
+      it 'should apply the ressource if creates misses' do
+        input_data "Line 1#{$/}This is the result line.#{$/}bar#{$/}"
+        editfile( :creates => '/^Line.*?^barx/m').exists?.should be_false
+      end
     end
     
   end # create

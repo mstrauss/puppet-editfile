@@ -54,6 +54,10 @@ Puppet::Type.newtype(:editfile) do
   newparam(:always_ensure_matches) do
     desc 'The default behaviour of editfile is to do nothing when the ensure-regexp is already present in the file.  Set this to _true_ do have editfile run, even if the ensure-regexp _is_ found.'
   end
+  
+  newparam(:creates) do
+    desc 'A regular expression which, when absent, causes the resource to apply.  This defaults to _ensure_.  Override to specify what will be created by the resource e.g. when you use backreferences in _ensure_.'
+  end
 
   validate do
     self[:match] = :undef if self[:match].nil? or self[:match] == ''

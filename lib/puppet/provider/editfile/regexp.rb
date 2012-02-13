@@ -73,8 +73,18 @@ Puppet::Type.type(:editfile).provide(:regexp, :parent => Puppet::Provider) do
   end
   
   def line_found?
-    escaped_line = Regexp.escape( line_without_break )
-    matches_found?( /^#{escaped_line}$/ )
+    if m = @resource[:creates]
+      # first character slash ==> we eval it
+      begin
+        m = eval(m) if m =~ %r{/.*/}
+      rescue
+        throw Puppet::Error.new( 'Unable to compile regular expression.')
+      end
+      matches_found?( Regexp.new( m ) )
+    else
+      escaped_line = Regexp.escape( line_without_break )
+      matches_found?( /^#{escaped_line}$/ )
+    end
   end
 
   def read_file_as_string
