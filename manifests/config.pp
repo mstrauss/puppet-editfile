@@ -49,7 +49,7 @@ define editfile::config( $path, $entry = false, $ensure, $sep = '=', $quote = fa
         # OR
         # if there is no match, editfile automatically appends our entry at EOF
         match  => "/^(#?\s*${entry}\s?(?!.*^${entry})|${entry}\s?)/m",
-        ensure => present,
+        ensure => $_ensure,
       }
       
       if $remove_dupes == true {
