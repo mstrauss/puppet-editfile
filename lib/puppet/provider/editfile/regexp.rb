@@ -17,13 +17,13 @@ Puppet::Type.type(:editfile).provide(:regexp, :parent => Puppet::Provider) do
       @data.gsub!( match_regex, line )
     else
       # no match found ==> append at end of file
-      Puppet.debug "Appending '#{line}'"
+      Puppet.debug "Appending '#{line( :remove_break => true, :with_backrefs => false )}'"
       if @data[-1,1] == $/
         # newline at the end, proceed as usual
-        @data << line_with_break
+        @data << line( :append_break => true, :with_backrefs => false )
       else
         # no newline, we keep that state:
-        @data << $/ << line_without_break
+        @data << $/ << line( :remove_break => true, :with_backrefs => false )
       end
     end
     myflush
@@ -51,6 +51,7 @@ Puppet::Type.type(:editfile).provide(:regexp, :parent => Puppet::Provider) do
       end
     end
   end
+  
   
   private
   
@@ -129,17 +130,6 @@ Puppet::Type.type(:editfile).provide(:regexp, :parent => Puppet::Provider) do
       @match_regex = Regexp.new( m )
     end
       
-    # # abort on regexp strings ==> these should be regexps instead
-    # if m.is_a? String
-    #   if [ '[', ']', '.*', '.+', '^', '$' ].any? { |test| m.include? test }
-    #     raise Puppet::Error.new 'This looks like a Regexp.  Please modify your manifest to use a Regexp instead of a String.  Regexp strings are no longer supported.'
-    #   end
-    #   escaped_match = Regexp.quote( m.chomp )
-    #   @match_regex = /^.*#{escaped_match}.*\n/
-    # else
-    #   # @resource[:match] is then a Regexp hopefully
-    #   @match_regex = m
-    # end
   end
   
   # this is needed for deletions, when we wanna replace the whole line with an empty string;
@@ -149,22 +139,24 @@ Puppet::Type.type(:editfile).provide(:regexp, :parent => Puppet::Provider) do
     return /^(?>#{match_regex})#{$/}/
   end
   
+  def line( options = {} )
+    default_options = { :remove_break => false, :append_break => false, :with_backrefs => true }
+    options = default_options.merge!( options )
+    result = @resource[:line]
+    result.chomp! if options[:remove_break] or options[:append_break] or @resource[:exact] != true
+    result << $/ if options[:append_break]
+    result.gsub!(/\\[0-9]+/,'') unless options[:with_backrefs]
+    result
+  end
+  
   def line_without_break
-    @resource[:line].chomp || ''
+    line( :remove_break => true )
   end
 
   def line_with_break
-    line_without_break + $/
+    line( :append_break => true )
   end
-  
-  def line
-    if @resource[:exact]
-      @resource[:line]
-    else
-      line_without_break
-    end
-  end
-  
+    
   def myflush
     Puppet.debug "Editfile::Regexp: Flushing to file #{@resource[:path]}."
     File.open( @resource[:path], "w" ) do |f|

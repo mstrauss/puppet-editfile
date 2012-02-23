@@ -352,6 +352,30 @@ Match User username
   PasswordAuthentication yes'
       end
 
+      it 'should append the MatchUser block if missing' do
+        input_data '# a sample sshd config
+Match User wrongusername
+  ForceCommand internal-sftp
+  ChrootDirectory /home/username
+  PasswordAuthentication yes'
+        apply_ressource :exact => true, :match => '/(^Match User username.*?)(^\S.*|\Z)/m', :ensure => '\2
+Match User username
+  ForceCommand internal-sftp
+  ChrootDirectory /home/username
+  PasswordAuthentication yes'
+        expect_data '# a sample sshd config
+Match User wrongusername
+  ForceCommand internal-sftp
+  ChrootDirectory /home/username
+  PasswordAuthentication yes
+
+Match User username
+  ForceCommand internal-sftp
+  ChrootDirectory /home/username
+  PasswordAuthentication yes'
+      end
+
+    end
     end
 
     describe 'editfile::config resource' do
