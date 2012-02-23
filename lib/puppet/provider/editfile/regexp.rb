@@ -52,8 +52,8 @@ Puppet::Type.type(:editfile).provide(:regexp, :parent => Puppet::Provider) do
         status = line_found?
       end
     end
-    Puppet.debug "Editfile::Regexp#exists?: Answer is #{status == true}."
-    status == true
+    Puppet.debug "Editfile::Regexp#exists?: Answer is #{status or false}."
+    status or false     # we wanna have an explicit Boolean here (for debug output)
   end
   
   
