@@ -11,6 +11,7 @@ Puppet::Type.type(:editfile).provide(:regexp, :parent => Puppet::Provider) do
   desc 'Ensures that text matching a regular expression is -or is not- present in the given file.  This is mainly a wrapper for String#gsub, applied on the whole file at once.  Backreferences (\1, \2, etc.) and advanced Oniguruma features are therefore supported.'
 
   def create
+    raise( Puppet::DevError, "We have been asked to create this resource, but it is already present." ) if exists?
     Puppet.debug "Editfile::Regexp: Creating line '#{@resource[:line]}'.  Replacing #{match_regex}."
     @data = read_file_as_string
     if matches_found?
