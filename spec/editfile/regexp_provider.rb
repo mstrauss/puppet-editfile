@@ -192,20 +192,33 @@ DAEMON_OPTS="-a :80 \
 '
     end
     
-    it 'should handle the umask example well (exact matching)' do
-      input_data "\# a comment line#{$/}UMASK\t002#{$/}"
-      apply_ressource :match => '^UMASK.*\n', :ensure => "UMASK\t022\n", :exact => true
-      expect_data "\# a comment line#{$/}UMASK\t022#{$/}"
-    end
+    
+    describe 'umask example' do
+      
+      it 'should handle exact matching well' do
+        input_data "\# a comment line#{$/}UMASK\t002#{$/}"
+        apply_ressource :match => '^UMASK.*\n', :ensure => "UMASK\t022\n", :exact => true
+        expect_data "\# a comment line#{$/}UMASK\t022#{$/}"
+      end
 
-    it 'should handle the umask example well' do
-      input_data "\# a comment line#{$/}UMASK\t002#{$/}"
-      apply_ressource :match => '^UMASK', :ensure => "UMASK\t022"
-      expect_data "\# a comment line#{$/}UMASK\t022#{$/}"
+      it 'should handle default matching well' do
+        input_data "\# a comment line#{$/}UMASK\t002#{$/}"
+        apply_ressource :match => '^UMASK', :ensure => "UMASK\t022"
+        expect_data "\# a comment line#{$/}UMASK\t022#{$/}"
+      end
+      
     end
     
-    it 'should handle the MatchUser present example' do
-      input_data '# a sample sshd config
+    
+    describe 'MatchUser example' do
+      regexp = '^Match User username(\n\s+.+)*'
+      lines = 'Match User username
+  ForceCommand internal-sftp
+  ChrootDirectory /home/username
+  PasswordAuthentication yes' 
+      
+      it 'should handle the MatchUser present example' do
+        input_data '# a sample sshd config
 Match User username
   ForceCommand internal-sftp
   ChrootDirectory /home/username
@@ -215,11 +228,8 @@ Match User otheruser
   ChrootDirectory /home/otheruser
   PasswordAuthentication yes
 # end of example'
-      apply_ressource :match => '^Match User username(\n\s+.+)*', :ensure => 'Match User username
-  ForceCommand internal-sftp
-  ChrootDirectory /home/username
-  PasswordAuthentication yes'
-      expect_data '# a sample sshd config
+        apply_ressource :match => regexp, :ensure => lines
+        expect_data '# a sample sshd config
 Match User username
   ForceCommand internal-sftp
   ChrootDirectory /home/username
@@ -229,20 +239,17 @@ Match User otheruser
   ChrootDirectory /home/otheruser
   PasswordAuthentication yes
 # end of example'
-    end
+      end
 
-    it 'should handle the MatchUser missing example' do
-      input_data '# a sample sshd config
+      it 'should handle the MatchUser missing example' do
+        input_data '# a sample sshd config
 Match User otheruser
   ForceCommand internal-sftp
   ChrootDirectory /home/otheruser
   PasswordAuthentication yes
 # end of example'
-      apply_ressource :match => '^Match User username(\n\s+.+)*', :ensure => 'Match User username
-  ForceCommand internal-sftp
-  ChrootDirectory /home/username
-  PasswordAuthentication yes'
-      expect_data '# a sample sshd config
+        apply_ressource :match => regexp, :ensure => lines
+        expect_data '# a sample sshd config
 Match User otheruser
   ForceCommand internal-sftp
   ChrootDirectory /home/otheruser
@@ -252,10 +259,10 @@ Match User username
   ForceCommand internal-sftp
   ChrootDirectory /home/username
   PasswordAuthentication yes'
-    end
+      end
 
-    it 'should handle the MatchUser present but not correct example' do
-      input_data '# a sample sshd config
+      it 'should handle the MatchUser present but not correct example' do
+        input_data '# a sample sshd config
 Match User username
   PasswordAuthentication no
 Match User otheruser
@@ -263,10 +270,7 @@ Match User otheruser
   ChrootDirectory /home/otheruser
   PasswordAuthentication yes
 # end of example'
-      apply_ressource :match => '^Match User username(\n\s+.+)*', :ensure => 'Match User username
-  ForceCommand internal-sftp
-  ChrootDirectory /home/username
-  PasswordAuthentication yes'
+      apply_ressource :match => regexp, :ensure => lines
       expect_data '# a sample sshd config
 Match User username
   ForceCommand internal-sftp
@@ -277,23 +281,27 @@ Match User otheruser
   ChrootDirectory /home/otheruser
   PasswordAuthentication yes
 # end of example'
+      end
+      
     end
     
-    it 'should handle the SSLHonorCipherOrder missing example' do
-      input_data "#SSLStrictSNIVHostCheck On\n</IfModule>\n"
-      apply_ressource :match => '^(SSLHonorCipherOrder .+\n)?</IfModule>', :ensure => 'SSLHonorCipherOrder on
-</IfModule>', :exact => false
-      expect_data '#SSLStrictSNIVHostCheck On
-SSLHonorCipherOrder on
-</IfModule>
-'
-    end
+    
+    describe 'SSLHonorCipherOrder example' do
+      regexp = '^(SSLHonorCipherOrder .+\n)?</IfModule>'
+      lines = "SSLHonorCipherOrder on\n</IfModule>"
 
-    it 'should handle the SSLHonorCipherOrder present example' do
-      input_data "#SSLStrictSNIVHostCheck On\nSSLHonorCipherOrder on\n</IfModule>\n"
-      apply_ressource :match => '^(SSLHonorCipherOrder .+\n)?</IfModule>', :ensure => 'SSLHonorCipherOrder on
-</IfModule>', :exact => true
-      expect_data "#SSLStrictSNIVHostCheck On\nSSLHonorCipherOrder on\n</IfModule>\n"
+      it 'should handle the SSLHonorCipherOrder missing example' do
+        input_data "#SSLStrictSNIVHostCheck On\n</IfModule>\n"
+        apply_ressource :match => regexp, :ensure => lines, :exact => false
+        expect_data "#SSLStrictSNIVHostCheck On\nSSLHonorCipherOrder on\n</IfModule>\n"
+      end
+
+      it 'should handle the SSLHonorCipherOrder present example' do
+        input_data "#SSLStrictSNIVHostCheck On\nSSLHonorCipherOrder on\n</IfModule>\n"
+        apply_ressource :match => regexp, :ensure => lines, :exact => true
+        expect_data "#SSLStrictSNIVHostCheck On\nSSLHonorCipherOrder on\n</IfModule>\n"
+      end
+      
     end
     
     describe 'lookahead match' do
