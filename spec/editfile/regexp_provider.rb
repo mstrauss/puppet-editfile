@@ -1,6 +1,9 @@
 require 'spec_helper'
 require 'tempfile'
 
+# TO DEBUG: Uncomment next line and place a 'debugger' where needed
+# require 'ruby-debug'
+
 def editfile_type
   Puppet::Type.type(:editfile)
 end
@@ -32,10 +35,17 @@ end
 def apply_ressource( options = {} )
   if options[:ensure] == :absent
     send_method = 'destroy'
+    # editfile( options ).exists?.should be_true
   else
     send_method = 'create'
+    editfile( options ).exists?.should be_false
   end
-  proc { editfile( options ).send( send_method ) }.should_not raise_error
+  lambda { editfile( options ).send( send_method ) }.should_not raise_error
+end
+
+def apply_ressource_exists( options = {} )
+  editfile( options ).exists?.should be_true
+  lambda { editfile( options ).send( :create ) }.should raise_error(Puppet::DevError)
 end
 
 def apply_editfile_config( options = {} )
@@ -76,7 +86,7 @@ describe regexp_provider do
     end
 
     # it 'should abort when a string match looks like a regexp' do
-    #   proc { editfile( :match => '^.*bla.*\n' ).create }.should raise_error( Puppet::Error )
+    #   lambda { editfile( :match => '^.*bla.*\n' ).create }.should raise_error( Puppet::Error )
     # end
     
   end
@@ -129,19 +139,30 @@ describe regexp_provider do
       apply_ressource
       expect_data "Test-File#{$/}This is the present line.#{$/}This is the result line.#{$/}"
     end
-
-    it 'should support backreferences (exact matching)' do
-      input_data "Line 1#{$/}Line 2#{$/}Line 3#{$/}"
-      apply_ressource :match => '^Line (.*)\n', :ensure => "Result \\1\n", :exact => true
-      expect_data "Result 1#{$/}Result 2#{$/}Result 3#{$/}"
-    end
-
-    it 'should support backreferences' do
-      input_data "Line 1#{$/}Line 2#{$/}Line 3#{$/}"
-      apply_ressource :match => '^Line (.*)', :ensure => 'Result \1'
-      expect_data "Result 1#{$/}Result 2#{$/}Result 3#{$/}"
-    end
     
+    describe 'with backreferences' do
+      
+      it 'should always return false on exist?' do
+        input_data "Line 1#{$/}Line 2#{$/}Line 3#{$/}"
+        editfile( :match => '^Line (.*)', :ensure => 'Result \1' ).exists?.should be_false
+        input_data "Result 1#{$/}Result 2#{$/}Result 3#{$/}"
+        editfile( :match => '^Line (.*)', :ensure => 'Result \1' ).exists?.should be_false
+      end
+
+      it 'should be supported with exact matching' do
+        input_data "Line 1#{$/}Line 2#{$/}Line 3#{$/}"
+        apply_ressource :match => '^Line (.*)\n', :ensure => "Result \\1\n", :exact => true
+        expect_data "Result 1#{$/}Result 2#{$/}Result 3#{$/}"
+      end
+
+      it 'should be supported' do
+        input_data "Line 1#{$/}Line 2#{$/}Line 3#{$/}"
+        apply_ressource :match => '^Line (.*)', :ensure => 'Result \1'
+        expect_data "Result 1#{$/}Result 2#{$/}Result 3#{$/}"
+      end
+
+    end
+
     it 'should detect a present multi-line-ensure' do
       input_data "Line 1#{$/}Line 2#{$/}Line 3#{$/}"
       editfile( :ensure => "Line 2#{$/}Line 3" ).exists?.should be_true
@@ -228,7 +249,7 @@ Match User otheruser
   ChrootDirectory /home/otheruser
   PasswordAuthentication yes
 # end of example'
-        apply_ressource :match => regexp, :ensure => lines
+        apply_ressource_exists :match => regexp, :ensure => lines
         expect_data '# a sample sshd config
 Match User username
   ForceCommand internal-sftp
@@ -298,7 +319,7 @@ Match User otheruser
 
       it 'should handle the SSLHonorCipherOrder present example' do
         input_data "#SSLStrictSNIVHostCheck On\nSSLHonorCipherOrder on\n</IfModule>\n"
-        apply_ressource :match => regexp, :ensure => lines, :exact => true
+        apply_ressource_exists :match => regexp, :ensure => lines, :exact => true
         expect_data "#SSLStrictSNIVHostCheck On\nSSLHonorCipherOrder on\n</IfModule>\n"
       end
       
@@ -390,30 +411,33 @@ Match User username
     describe 'section matching example' do
       regexp = '/(^\[section1\]\n)(.*?)(^entry\s+=.+?\n)?/m'
       line = "[section1]\n\\2entry = fixed value\n"
+      creates = '/^\[section1\].*?^entry = fixed value\n/m'
+      # creates = '/^entry = fixed value.*/'
+      options = { :match => regexp, :ensure => line, :creates => creates, :exact => true }
       
       it 'should correctly update the existing value' do
         input_data '[section1]
 entry = value
 [section2]
 entry = another value'
-        apply_ressource :match => regexp, :ensure => line, :exact => true
+        apply_ressource options
         expect_data '[section1]
 entry = fixed value
 [section2]
 entry = another value'
       end
 
-      it 'should place a new value in the correct section (section on top)' do
+      it 'should place a new value in the correct section (section on top, value in other section present)' do
         input_data '[section1]
 entry2 = value2
 [section2]
-entry = another value'
-        apply_ressource :match => regexp, :ensure => line, :exact => true
+entry = fixed value'
+        apply_ressource options
         expect_data '[section1]
 entry = fixed value
 entry2 = value2
 [section2]
-entry = another value'
+entry = fixed value'
       end
 
       it 'should place a new value in the correct section (section on bottom)' do
@@ -421,7 +445,7 @@ entry = another value'
 entry = section2 value
 [section1]
 entry2 = another value'
-        apply_ressource :match => regexp, :ensure => line, :exact => true
+        apply_ressource options
         expect_data '[section2]
 entry = section2 value
 [section1]
@@ -434,13 +458,27 @@ entry2 = another value'
 entry = section2 value
 [section3]
 entry = section3 value'
-        apply_ressource :match => regexp, :ensure => line, :exact => true
+        apply_ressource options
         expect_data '[section2]
 entry = section2 value
 [section3]
 entry = section3 value
 [section1]
 entry = fixed value'
+      end
+
+      it 'should do nothing if all data are there' do
+        input_data '[section1]
+first entry = first value
+entry = fixed value
+[section2]
+entry = value'
+        apply_ressource_exists options
+        expect_data '[section1]
+first entry = first value
+entry = fixed value
+[section2]
+entry = value'
       end
     end
 
@@ -494,27 +532,27 @@ entry = fixed value'
     end
     
     it 'should remove nothing, using undefined match' do
-      proc { editfile( :ensure => :absent ).destroy }.should_not raise_error
+      lambda { editfile( :ensure => :absent ).destroy }.should_not raise_error
       expect_data "Abc 1#{$/}Cde 2#{$/}Efg 3#{$/}"
     end
 
     it 'should remove all matching lines, using string' do
-      proc { editfile( :ensure => :absent, :match => 'C' ).destroy }.should_not raise_error
+      lambda { editfile( :ensure => :absent, :match => 'C' ).destroy }.should_not raise_error
       expect_data "Abc 1#{$/}Efg 3#{$/}"
     end
     
     it 'should remove all matching lines, using regexp with newline (exact)' do
-      proc { editfile( :ensure => :absent, :match => '/^.*c.*#{$/}/i', :exact => true ).destroy }.should_not raise_error
+      lambda { editfile( :ensure => :absent, :match => '/^.*c.*#{$/}/i', :exact => true ).destroy }.should_not raise_error
       expect_data "Efg 3#{$/}"
     end
     
     it 'should remove matching characters, using exact regexp' do
-      proc { editfile( :ensure => :absent, :match => '/c/i', :exact => true ).destroy }.should_not raise_error
+      lambda { editfile( :ensure => :absent, :match => '/c/i', :exact => true ).destroy }.should_not raise_error
       expect_data "Ab 1#{$/}de 2#{$/}Efg 3#{$/}"
     end
 
     it 'should remove all matching lines' do
-      proc { editfile( :ensure => :absent, :match => '/c/i' ).destroy }.should_not raise_error
+      lambda { editfile( :ensure => :absent, :match => '/c/i' ).destroy }.should_not raise_error
       expect_data "Efg 3#{$/}"
     end
 
