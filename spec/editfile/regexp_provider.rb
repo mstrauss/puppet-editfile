@@ -386,6 +386,62 @@ Match User username
       end
 
     end
+    
+    describe 'section matching example' do
+      regexp = '/(^\[section1\]\n)(.*?)(^entry\s+=.+?\n)?/m'
+      line = "[section1]\n\\2entry = fixed value\n"
+      
+      it 'should correctly update the existing value' do
+        input_data '[section1]
+entry = value
+[section2]
+entry = another value'
+        apply_ressource :match => regexp, :ensure => line, :exact => true
+        expect_data '[section1]
+entry = fixed value
+[section2]
+entry = another value'
+      end
+
+      it 'should place a new value in the correct section (section on top)' do
+        input_data '[section1]
+entry2 = value2
+[section2]
+entry = another value'
+        apply_ressource :match => regexp, :ensure => line, :exact => true
+        expect_data '[section1]
+entry = fixed value
+entry2 = value2
+[section2]
+entry = another value'
+      end
+
+      it 'should place a new value in the correct section (section on bottom)' do
+        input_data '[section2]
+entry = section2 value
+[section1]
+entry2 = another value'
+        apply_ressource :match => regexp, :ensure => line, :exact => true
+        expect_data '[section2]
+entry = section2 value
+[section1]
+entry = fixed value
+entry2 = another value'
+      end
+
+      it 'should create section and value for non-existing section' do
+        input_data '[section2]
+entry = section2 value
+[section3]
+entry = section3 value'
+        apply_ressource :match => regexp, :ensure => line, :exact => true
+        expect_data '[section2]
+entry = section2 value
+[section3]
+entry = section3 value
+[section1]
+entry = fixed value'
+      end
     end
 
     describe 'editfile::config resource' do
