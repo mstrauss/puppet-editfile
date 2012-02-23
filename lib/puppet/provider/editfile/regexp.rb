@@ -143,7 +143,7 @@ Puppet::Type.type(:editfile).provide(:regexp, :parent => Puppet::Provider) do
   def line( options = {} )
     default_options = { :remove_break => false, :append_break => false, :with_backrefs => true }
     options = default_options.merge!( options )
-    result = @resource[:line]
+    result = @resource[:line].clone   # we need a copy so not to modify the original @resource[:line]
     result.chomp! if options[:remove_break] or options[:append_break] or @resource[:exact] != true
     result << $/ if options[:append_break]
     result.gsub!(/\\[0-9]+/,'') unless options[:with_backrefs]
