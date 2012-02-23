@@ -79,7 +79,7 @@ Puppet::Type.type(:editfile).provide(:regexp, :parent => Puppet::Provider) do
       begin
         m = eval(m)
       rescue
-        throw Puppet::Error.new( 'Unable to compile regular expression.')
+        raise Puppet::Error, 'Unable to compile regular expression.'
       end
       matches_found?( m )
     else
