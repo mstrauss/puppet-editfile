@@ -142,11 +142,37 @@ describe regexp_provider do
     
     describe 'with backreferences' do
       
-      it 'should always return false on exist?' do
+      it 'should return false on exist? if we HAVE a match' do
         input_data "Line 1#{$/}Line 2#{$/}Line 3#{$/}"
-        editfile( :match => '^Line (.*)', :ensure => 'Result \1' ).exists?.should be_false
-        input_data "Result 1#{$/}Result 2#{$/}Result 3#{$/}"
-        editfile( :match => '^Line (.*)', :ensure => 'Result \1' ).exists?.should be_false
+        options = { :match => '^Line (.*)', :ensure => 'Result \1' }
+        editfile( options ).exists?.should be_false
+      end
+      
+      describe 'without "creates"' do
+        it 'should return false on exist? if we have NO match (and append the stripped ensure-line)' do
+          options = { :match => '^Line (.*)', :ensure => 'Result \1' }
+          input_data "Result 1#{$/}Result 2#{$/}Result 3#{$/}"
+          apply_ressource options
+          expect_data "Result 1#{$/}Result 2#{$/}Result 3#{$/}Result #{$/}"
+        end
+      end
+      
+      describe 'with "creates"' do
+        it 'should return true on exist? if we have a match via "creates"' do
+          options = { :match => '^Line (.*)', :ensure => 'Result \1', :creates => '/^Result/' }
+          input_data "Result 1#{$/}Result 2#{$/}Result 3#{$/}"
+          editfile( options ).send( :line_has_backrefs? ).should be_true
+          apply_ressource_exists options
+          expect_data "Result 1#{$/}Result 2#{$/}Result 3#{$/}"
+        end
+
+        it 'should return false on exist? if we have NO match via "creates" (and append the stripped ensure-line)' do
+          options = { :match => '^Line (.*)', :ensure => 'Result \1', :creates => '/^bla/' }
+          input_data "Result 1#{$/}Result 2#{$/}Result 3#{$/}"
+          editfile( options ).send( :line_has_backrefs? ).should be_true
+          apply_ressource options
+          expect_data "Result 1#{$/}Result 2#{$/}Result 3#{$/}Result #{$/}"
+        end
       end
 
       it 'should be supported with exact matching' do
@@ -160,7 +186,7 @@ describe regexp_provider do
         apply_ressource :match => '^Line (.*)', :ensure => 'Result \1'
         expect_data "Result 1#{$/}Result 2#{$/}Result 3#{$/}"
       end
-
+      
     end
 
     it 'should detect a present multi-line-ensure' do
@@ -415,7 +441,7 @@ Match User username
       # creates = '/^entry = fixed value.*/'
       options = { :match => regexp, :ensure => line, :creates => creates, :exact => true }
       
-      it 'should correctly update the existing value' do
+      it 'should correctly update the existing value in the existing section' do
         input_data '[section1]
 entry = value
 [section2]
@@ -427,7 +453,7 @@ entry = fixed value
 entry = another value'
       end
 
-      it 'should place a new value in the correct section (section on top, value in other section present)' do
+      it 'should place a new value in the existing section (on top)' do
         input_data '[section1]
 entry2 = value2
 [section2]
@@ -440,7 +466,7 @@ entry2 = value2
 entry = fixed value'
       end
 
-      it 'should place a new value in the correct section (section on bottom)' do
+      it 'should place a new value in the correct section (on bottom)' do
         input_data '[section2]
 entry = section2 value
 [section1]

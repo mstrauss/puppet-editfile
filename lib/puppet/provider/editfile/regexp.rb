@@ -44,7 +44,16 @@ Puppet::Type.type(:editfile).provide(:regexp, :parent => Puppet::Provider) do
       # the resource exists -meaning, there are data to be purged- if matches are found
       status = matches_found?
     else
-      if @resource[:always_ensure_matches].is_a?(TrueClass)
+      # ensure => present
+      if line_has_backrefs?
+        # in this case, we cannot use line_found? without creates-parameter
+        if @resource[:creates]
+          status = line_found?
+        else
+          status = false
+        end
+        @resource[:always_ensure_matches] = true
+      elsif @resource[:always_ensure_matches].is_a?(TrueClass)
         # the resource does NOT exist, if matches are found OR the ensure-line is not present
         status = !( matches_found? or !line_found? )
       else
@@ -55,7 +64,6 @@ Puppet::Type.type(:editfile).provide(:regexp, :parent => Puppet::Provider) do
     Puppet.debug "Editfile::Regexp#exists?: Answer is #{status or false}."
     status or false     # we wanna have an explicit Boolean here (for debug output)
   end
-  
   
   private
   
@@ -77,12 +85,17 @@ Puppet::Type.type(:editfile).provide(:regexp, :parent => Puppet::Provider) do
     end
   end
   
+  
   def line_found?
+    if line_has_backrefs? and not @resource[:creates]
+      raise( Puppet::DevError, 'Cannot use "line_found?" without "creates" parameter when using backreferences.' )
+    end
+    
     if m = @resource[:creates]
       begin
         m = eval(m)
       rescue
-        raise Puppet::Error, 'Unable to compile regular expression.'
+        raise Puppet::Error, "Unable to compile regular expression '#{m}'. Please specify a valid regexp for 'creates'."
       end
       matches_found?( m )
     else
@@ -103,7 +116,7 @@ Puppet::Type.type(:editfile).provide(:regexp, :parent => Puppet::Provider) do
   end
   
   def throw_on_missing_match
-    throw Puppet::Error.new( 'If you wanna replace/delete the whole file, do not use Editfile, use other means. Aborting.' ) if  @resource[:match].nil? or @resource[:match] == ''
+    raise( Puppet::Error, 'If you wanna replace/delete the whole file, do not use Editfile, use other means. Aborting.' ) if  @resource[:match].nil? or @resource[:match] == ''
   end
   
   def match_regex
@@ -123,7 +136,7 @@ Puppet::Type.type(:editfile).provide(:regexp, :parent => Puppet::Provider) do
     begin
       m = eval(m) if m =~ %r{/.*/}
     rescue
-      throw Puppet::Error.new( 'Unable to compile regular expression.')
+      raise Puppet::Error, 'Unable to compile regular expression.'
     end
     
     unless @resource[:exact]
@@ -153,6 +166,10 @@ Puppet::Type.type(:editfile).provide(:regexp, :parent => Puppet::Provider) do
     result
   end
   
+  def line_has_backrefs?
+    line( :with_backrefs => true ) != line( :with_backrefs => false )
+  end
+    
   def line_without_break
     line( :remove_break => true )
   end
@@ -160,7 +177,7 @@ Puppet::Type.type(:editfile).provide(:regexp, :parent => Puppet::Provider) do
   def line_with_break
     line( :append_break => true )
   end
-    
+
   def myflush
     Puppet.debug "Editfile::Regexp#myflush: Flushing to file #{@resource[:path]}."
     File.open( @resource[:path], "w" ) do |f|
