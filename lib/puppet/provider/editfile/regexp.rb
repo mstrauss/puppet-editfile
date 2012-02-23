@@ -12,13 +12,13 @@ Puppet::Type.type(:editfile).provide(:regexp, :parent => Puppet::Provider) do
 
   def create
     raise( Puppet::DevError, "We have been asked to create this resource, but it is already present." ) if exists?
-    Puppet.debug "Editfile::Regexp: Creating line '#{@resource[:line]}'.  Replacing #{match_regex}."
     @data = read_file_as_string
     if matches_found?
+      Puppet.debug "Editfile::Regexp#create: Replacing #{match_regex} with '#{line}'."
       @data.gsub!( match_regex, line )
     else
       # no match found ==> append at end of file
-      Puppet.debug "Appending '#{line( :remove_break => true, :with_backrefs => false )}'"
+      Puppet.debug "Editfile::Regexp#create: Appending '#{line( :remove_break => true, :with_backrefs => false )}'"
       if @data[-1,1] == $/
         # newline at the end, proceed as usual
         @data << line( :append_break => true, :with_backrefs => false )
@@ -32,25 +32,28 @@ Puppet::Type.type(:editfile).provide(:regexp, :parent => Puppet::Provider) do
 
   def destroy
     throw_on_missing_match       
-    Puppet.debug "Editfile::Regexp: Destroying line '#{resource[:match]}', #{match_regex}"
+    Puppet.debug "Editfile::Regexp#destroy: Destroying line '#{resource[:match]}', #{match_regex}"
     @data = read_file_as_string
     @data.gsub!( match_with_eol_regex, '' )
     myflush
   end
 
   def exists?
+    Puppet.debug "Editfile::Regexp#exists?: We have been asked if #{@resource[:name]} exists."    
     if @resource[:ensure] == :absent
       # the resource exists -meaning, there are data to be purged- if matches are found
-      matches_found?
+      status = matches_found?
     else
       if @resource[:always_ensure_matches].is_a?(TrueClass)
         # the resource does NOT exist, if matches are found OR the ensure-line is not present
-        not ( matches_found? or !line_found? )
+        status = !( matches_found? or !line_found? )
       else
         # the resource does exist, if the ensure-regexp is present
-        line_found?
+        status = line_found?
       end
     end
+    Puppet.debug "Editfile::Regexp#exists?: Answer is #{status}."
+    status
   end
   
   
@@ -62,11 +65,11 @@ Puppet::Type.type(:editfile).provide(:regexp, :parent => Puppet::Provider) do
   end
   
   def matches_found?( regexp = match_regex )
-    Puppet.debug "Editfile::Regexp: Checking existence of regexp '#{regexp.to_s}' in file '#{@resource[:path]}':"
+    Puppet.debug "Editfile::Regexp#matches_found?: Checking for '#{regexp.to_s}' in file '#{@resource[:path]}'."
     if File.exists?( @resource[:path] )
-      Puppet.debug "Editfile::Regexp: File exists."
+      Puppet.debug "Editfile::Regexp#matches_found?: File exists."
       status = ( read_file_as_string =~ regexp )
-      Puppet.debug( status ? "Match found at position: #{status}" : "No match found." )
+      Puppet.debug( "Editfile::Regexp#matches_found?: " + ( status ? "Match found at position: #{status}" : "No match found." ) )
       return status
     else
       Puppet.debug "Editfile::Regexp: File does NOT exist."
