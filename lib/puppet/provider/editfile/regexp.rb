@@ -136,7 +136,7 @@ Puppet::Type.type(:editfile).provide(:regexp, :parent => Puppet::Provider) do
     begin
       m = eval(m) if m =~ %r{/.*/}
     rescue
-      raise Puppet::Error, 'Unable to compile regular expression.'
+      raise Puppet::Error, "Unable to compile regular expression '#{m}'. Please specify a valid regexp for 'match'."
     end
     
     unless @resource[:exact]
