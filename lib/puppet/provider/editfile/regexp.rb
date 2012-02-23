@@ -52,8 +52,8 @@ Puppet::Type.type(:editfile).provide(:regexp, :parent => Puppet::Provider) do
         status = line_found?
       end
     end
-    Puppet.debug "Editfile::Regexp#exists?: Answer is #{status}."
-    status
+    Puppet.debug "Editfile::Regexp#exists?: Answer is #{status == true}."
+    status == true
   end
   
   
@@ -72,7 +72,7 @@ Puppet::Type.type(:editfile).provide(:regexp, :parent => Puppet::Provider) do
       Puppet.debug( "Editfile::Regexp#matches_found?: " + ( status ? "Match found at position: #{status}" : "No match found." ) )
       return status
     else
-      Puppet.debug "Editfile::Regexp: File does NOT exist."
+      Puppet.debug "Editfile::Regexp#matches_found?: File does NOT exist."
       return false
     end
   end
@@ -92,12 +92,12 @@ Puppet::Type.type(:editfile).provide(:regexp, :parent => Puppet::Provider) do
   end
 
   def read_file_as_string
-    Puppet.debug "Editfile::Regexp: Reading file '#{@resource[:path]}'"
+    Puppet.debug "Editfile::Regexp#read_file_as_string: Reading file '#{@resource[:path]}'"
     begin
       IO.read( @resource[:path] )
     rescue Errno::ENOENT
       # an empty 'file'
-      Puppet.debug "Editfile::Regexp: File does NOT exist."
+      Puppet.debug "Editfile::Regexp#read_file_as_string: File does NOT exist."
       ''
     end
   end
@@ -162,7 +162,7 @@ Puppet::Type.type(:editfile).provide(:regexp, :parent => Puppet::Provider) do
   end
     
   def myflush
-    Puppet.debug "Editfile::Regexp: Flushing to file #{@resource[:path]}."
+    Puppet.debug "Editfile::Regexp#myflush: Flushing to file #{@resource[:path]}."
     File.open( @resource[:path], "w" ) do |f|
       f.write( @data )
       f.close
