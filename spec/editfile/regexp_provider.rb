@@ -314,13 +314,15 @@ SSLHonorCipherOrder on
     end
     
     describe 'multiline reordering' do
+      
+      match = '/(^Match User username.*?)(^\S.*|\Z)/m'
       it 'should put the MatchUser block just before EOF' do
         input_data '# a sample sshd config
 Match User username
   ChrootDirectory /home/username
   PasswordAuthentication no
 # end of example'
-        apply_ressource :exact => true, :match => '/(^Match User username.*?)(^\S.*|\Z)/m', :ensure => '\2
+        apply_ressource :exact => true, :match => match, :ensure => '\2
 Match User username
   ForceCommand internal-sftp
   ChrootDirectory /home/username
@@ -339,7 +341,7 @@ Match User username
   ForceCommand internal-sftp
   ChrootDirectory /home/username
   PasswordAuthentication yes'
-        apply_ressource :exact => true, :match => '/(^Match User username.*?)(^\S.*|\Z)/m', :ensure => '\2
+        apply_ressource :exact => true, :match => match, :ensure => '\2
 Match User username
   ForceCommand internal-sftp
   ChrootDirectory /home/username
@@ -358,7 +360,7 @@ Match User wrongusername
   ForceCommand internal-sftp
   ChrootDirectory /home/username
   PasswordAuthentication yes'
-        apply_ressource :exact => true, :match => '/(^Match User username.*?)(^\S.*|\Z)/m', :ensure => '\2
+        apply_ressource :exact => true, :match => match, :ensure => '\2
 Match User username
   ForceCommand internal-sftp
   ChrootDirectory /home/username
