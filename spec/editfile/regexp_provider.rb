@@ -73,12 +73,18 @@ describe regexp_provider do
   
   describe 'structure' do
 
-    it 'should recognize a regexp match parameter as such' do
+    it 'should recognize a regexp match parameter as such (not exact)' do
       regexp = editfile( :match => '/test/i' ).send( :match_regex )
       regexp.is_a?(Regexp).should be_true
       regexp.to_s.should == '(?-mix:^.*(?>(?i-mx:test)).*$)'
     end
     
+    it 'should recognize a regexp match parameter as such (exact)' do
+      regexp = editfile( :match => '/test/i', :exact => true ).send( :match_regex )
+      regexp.is_a?(Regexp).should be_true
+      regexp.to_s.should == '(?i-mx:test)'
+    end
+
     it 'should convert a string match parameter to a regexp' do
       regexp = editfile( :match => 'test' ).send( :match_regex )
       regexp.is_a?(Regexp).should be_true

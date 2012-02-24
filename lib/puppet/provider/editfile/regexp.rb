@@ -93,6 +93,7 @@ Puppet::Type.type(:editfile).provide(:regexp, :parent => Puppet::Provider) do
     
     if m = @resource[:creates]
       begin
+        Puppet.debug "Editfile::Regexp#line_found?: Evaluating '#{m}' as regexp."
         m = eval(m)
       rescue
         raise Puppet::Error, "Unable to compile regular expression '#{m}'. Please specify a valid regexp for 'creates'."
@@ -134,7 +135,13 @@ Puppet::Type.type(:editfile).provide(:regexp, :parent => Puppet::Provider) do
     
     # first character slash ==> we eval it
     begin
-      m = eval(m) if m =~ %r{/.*/}
+      Puppet.debug "Editfile::Regexp#match_regex?: Checking if '#{m}' is a regexp."
+      if m =~ %r{/.*/}
+        Puppet.debug "Editfile::Regexp#match_regex?: Think so."
+        m = eval(m)
+      else
+        Puppet.debug "Editfile::Regexp#match_regex?: Nope."
+      end
     rescue
       raise Puppet::Error, "Unable to compile regular expression '#{m}'. Please specify a valid regexp for 'match'."
     end
