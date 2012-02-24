@@ -465,10 +465,16 @@ Match User username
     
     describe 'section matching example' do
       
-      regexp = '/(^\[section1\]\n)(.*?)(^entry\s+=.+?\n)?/m'
-      line = "[section1]\n\\2entry = fixed value\n"
-      creates = '/^\[section1\]\n(^[^\[].*\n)*entry = fixed value$/'
-      options = { :match => regexp, :ensure => line, :creates => creates, :exact => true }
+      section = 'section1'
+      entry = 'entry'
+      value = 'fixed value'
+      match_regexp = '/(^\[%s\]\n)((^(?!%s)[^\[].*\n)*)(%s\s+=.+?\n)?/'
+      line_regexp = "[%s]\n\\2%s = %s\n"
+      creates_regexp = '/^\[%s\]\n(^[^\[].*\n)*%s = %s$/'
+      match = match_regexp % [section, entry, entry]
+      line = line_regexp % [section, entry, value]
+      creates = creates_regexp % [section, entry, value]
+      options = { :match => match, :ensure => line, :creates => creates, :exact => true }
       
       it 'should correctly update the existing value in the existing section' do
         input_data '[section1]
@@ -478,6 +484,22 @@ entry = another value
 '
         apply_ressource options
         expect_data '[section1]
+entry = fixed value
+[section2]
+entry = another value
+'
+      end
+
+      it 'should correctly update the existing value in the existing section (with extra lines)' do
+        input_data '[section1]
+first entry = first value
+entry = value
+[section2]
+entry = another value
+'
+        apply_ressource options
+        expect_data '[section1]
+first entry = first value
 entry = fixed value
 [section2]
 entry = another value
@@ -565,13 +587,12 @@ another entry = bla
 entry = value'
       end
 
-    end
 
-    # --- Real life my.cnf example ---
-    describe 'my.cnf idempotency example' do
-      
-      before do
-        input_data '[isamchk]
+      # --- Real life my.cnf example ---
+      describe 'my.cnf idempotency example' do
+
+        before do
+          input_data '[isamchk]
 read_buffer = 2M
 sort_buffer_size = 20M
 write_buffer = 2M
@@ -592,28 +613,29 @@ sort_buffer_size = 20M
 key_buffer = 20M
 [mysqldump]
 max_allowed_packet = 16M'
-      end
-      
-      it 'should be work with this' do
-        regexp = '/(^\[mysqldump\]\n)(.*?)(^max_allowed_packet\s+=.+?\n)?/m'
-        line = "[mysqldump]\n\\2max_allowed_packet = 16M\n"
-        # creates = '/^\[mysqldump\].*?^max_allowed_packet = 16M(?=.*?(\[.+?\]|\Z))/m'
-        creates = '/^\[mysqldump\]\n(^[^\[].*\n)*max_allowed_packet = 16M$/'
-        
-        options = { :match => regexp, :ensure => line, :creates => creates, :exact => true }
-        apply_ressource_exists options
-      end
+        end
 
-      it 'should be work with this too' do
-        regexp = '/(^\[mysqld\]\n)(.*?)(^key_buffer\s+=.+?\n)?/m'
-        line = "[mysqld]\n\\2key_buffer = 16M\n"
-        creates = '/^\[mysqld\].*?^key_buffer = 16M(?=.*?(\[.+?\]|\Z))/m'
-        options = { :match => regexp, :ensure => line, :creates => creates, :exact => true }
-        apply_ressource_exists options
-      end
-      
-      after do
-        expect_data '[isamchk]
+        it 'should be work with this' do
+          section = 'mysqldump'
+          entry = 'max_allowed_packet'
+          value = '16M'
+          match = match_regexp % [section, entry, entry]
+          line = line_regexp % [section, entry, value]
+          creates = creates_regexp % [section, entry, value]
+          options = { :match => match, :ensure => line, :creates => creates, :exact => true }
+          apply_ressource_exists options
+        end
+
+        it 'should be work with this too' do
+          regexp = '/(^\[mysqld\]\n)(.*?)(^key_buffer\s+=.+?\n)?/m'
+          line = "[mysqld]\n\\2key_buffer = 16M\n"
+          creates = '/^\[mysqld\].*?^key_buffer = 16M(?=.*?(\[.+?\]|\Z))/m'
+          options = { :match => regexp, :ensure => line, :creates => creates, :exact => true }
+          apply_ressource_exists options
+        end
+
+        after do
+          expect_data '[isamchk]
 read_buffer = 2M
 sort_buffer_size = 20M
 write_buffer = 2M
@@ -634,9 +656,12 @@ sort_buffer_size = 20M
 key_buffer = 20M
 [mysqldump]
 max_allowed_packet = 16M'
+        end
+
       end
       
     end
+
 
 
     describe 'editfile::config resource' do
