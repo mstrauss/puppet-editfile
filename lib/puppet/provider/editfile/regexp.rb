@@ -19,7 +19,7 @@ Puppet::Type.type(:editfile).provide(:regexp, :parent => Puppet::Provider) do
     else
       # no match found ==> append at end of file
       Puppet.debug "Editfile::Regexp#create: Appending '#{line( :remove_break => true, :with_backrefs => false )}'"
-      if @data[-1,1] == $/
+      if [nil, $/].any? { |c| @data[-1,1].eql? c }
         # newline at the end, proceed as usual
         @data << line( :append_break => true, :with_backrefs => false )
       else

@@ -117,6 +117,11 @@ describe regexp_provider do
   
   describe 'create' do
     
+    it 'should create a non-existing file' do
+      apply_ressource
+      expect_data "This is the result line.\n"
+    end
+    
     describe 'when match-regexp is found, but ensure-regexp is also found' do
       
       it 'should, by default, declare the resource present' do
@@ -461,74 +466,95 @@ Match User username
     describe 'section matching example' do
       regexp = '/(^\[section1\]\n)(.*?)(^entry\s+=.+?\n)?/m'
       line = "[section1]\n\\2entry = fixed value\n"
-      creates = '/^\[section1\].*?^entry = fixed value\n/m'
-      # creates = '/^entry = fixed value.*/'
+      creates = '/^\[section1\].*?^entry = fixed value\n(?=.*?\[.+?\])/m'
       options = { :match => regexp, :ensure => line, :creates => creates, :exact => true }
       
       it 'should correctly update the existing value in the existing section' do
         input_data '[section1]
 entry = value
 [section2]
-entry = another value'
+entry = another value
+'
         apply_ressource options
         expect_data '[section1]
 entry = fixed value
 [section2]
-entry = another value'
+entry = another value
+'
       end
 
       it 'should place a new value in the existing section (on top)' do
         input_data '[section1]
 entry2 = value2
 [section2]
-entry = fixed value'
+# wrong section!
+entry = fixed value
+'
         apply_ressource options
         expect_data '[section1]
 entry = fixed value
 entry2 = value2
 [section2]
-entry = fixed value'
+# wrong section!
+entry = fixed value
+'
       end
 
       it 'should place a new value in the correct section (on bottom)' do
         input_data '[section2]
 entry = section2 value
 [section1]
-entry2 = another value'
+entry2 = another value
+'
         apply_ressource options
         expect_data '[section2]
 entry = section2 value
 [section1]
 entry = fixed value
-entry2 = another value'
+entry2 = another value
+'
       end
 
       it 'should create section and value for non-existing section' do
         input_data '[section2]
 entry = section2 value
 [section3]
-entry = section3 value'
+entry = section3 value
+'
         apply_ressource options
         expect_data '[section2]
 entry = section2 value
 [section3]
 entry = section3 value
 [section1]
-entry = fixed value'
+entry = fixed value
+'
       end
+
+      it 'should create file and data for non-existing file' do
+        apply_ressource options
+        expect_data '[section1]
+entry = fixed value
+'
+      end
+
 
       it 'should do nothing if all data are there' do
         input_data '[section1]
 first entry = first value
 entry = fixed value
+another entry = bla
 [section2]
-entry = value'
+entry = value
+'
         apply_ressource_exists options
         expect_data '[section1]
 first entry = first value
 entry = fixed value
+another entry = bla
 [section2]
-entry = value'
+entry = value
+'
       end
     end
 
