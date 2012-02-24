@@ -464,9 +464,10 @@ Match User username
     end
     
     describe 'section matching example' do
+      
       regexp = '/(^\[section1\]\n)(.*?)(^entry\s+=.+?\n)?/m'
       line = "[section1]\n\\2entry = fixed value\n"
-      creates = '/^\[section1\].*?^entry = fixed value\n(?=.*?\[.+?\])/m'
+      creates = '/^\[section1\]\n(^[^\[].*\n)*entry = fixed value$/'
       options = { :match => regexp, :ensure => line, :creates => creates, :exact => true }
       
       it 'should correctly update the existing value in the existing section' do
@@ -515,6 +516,16 @@ entry2 = another value
 '
       end
 
+      it 'should not do anything when last line of file is in focus' do
+        input_data '[section2]
+entry = any other value'
+        apply_ressource options
+        expect_data '[section2]
+entry = any other value
+[section1]
+entry = fixed value'
+      end
+
       it 'should create section and value for non-existing section' do
         input_data '[section2]
 entry = section2 value
@@ -537,26 +548,96 @@ entry = fixed value
 entry = fixed value
 '
       end
-
-
+      
       it 'should do nothing if all data are there' do
         input_data '[section1]
 first entry = first value
 entry = fixed value
 another entry = bla
 [section2]
-entry = value
-'
+entry = value'
         apply_ressource_exists options
         expect_data '[section1]
 first entry = first value
 entry = fixed value
 another entry = bla
 [section2]
-entry = value
-'
+entry = value'
       end
+
     end
+
+    # --- Real life my.cnf example ---
+    describe 'my.cnf idempotency example' do
+      
+      before do
+        input_data '[isamchk]
+read_buffer = 2M
+sort_buffer_size = 20M
+write_buffer = 2M
+key_buffer = 20M
+[mysqld]
+myisam_sort_buffer_size = 8M
+max_allowed_packet = 1M
+read_rnd_buffer_size = 512K
+read_buffer_size = 256K
+sort_buffer_size = 512K
+table_cache = 64
+net_buffer_length = 8K
+key_buffer = 16M
+[myisamchk]
+read_buffer = 2M
+write_buffer = 2M
+sort_buffer_size = 20M
+key_buffer = 20M
+[mysqldump]
+max_allowed_packet = 16M'
+      end
+      
+      it 'should be work with this' do
+        regexp = '/(^\[mysqldump\]\n)(.*?)(^max_allowed_packet\s+=.+?\n)?/m'
+        line = "[mysqldump]\n\\2max_allowed_packet = 16M\n"
+        # creates = '/^\[mysqldump\].*?^max_allowed_packet = 16M(?=.*?(\[.+?\]|\Z))/m'
+        creates = '/^\[mysqldump\]\n(^[^\[].*\n)*max_allowed_packet = 16M$/'
+        
+        options = { :match => regexp, :ensure => line, :creates => creates, :exact => true }
+        apply_ressource_exists options
+      end
+
+      it 'should be work with this too' do
+        regexp = '/(^\[mysqld\]\n)(.*?)(^key_buffer\s+=.+?\n)?/m'
+        line = "[mysqld]\n\\2key_buffer = 16M\n"
+        creates = '/^\[mysqld\].*?^key_buffer = 16M(?=.*?(\[.+?\]|\Z))/m'
+        options = { :match => regexp, :ensure => line, :creates => creates, :exact => true }
+        apply_ressource_exists options
+      end
+      
+      after do
+        expect_data '[isamchk]
+read_buffer = 2M
+sort_buffer_size = 20M
+write_buffer = 2M
+key_buffer = 20M
+[mysqld]
+myisam_sort_buffer_size = 8M
+max_allowed_packet = 1M
+read_rnd_buffer_size = 512K
+read_buffer_size = 256K
+sort_buffer_size = 512K
+table_cache = 64
+net_buffer_length = 8K
+key_buffer = 16M
+[myisamchk]
+read_buffer = 2M
+write_buffer = 2M
+sort_buffer_size = 20M
+key_buffer = 20M
+[mysqldump]
+max_allowed_packet = 16M'
+      end
+      
+    end
+
 
     describe 'editfile::config resource' do
       
