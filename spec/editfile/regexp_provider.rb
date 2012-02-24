@@ -79,10 +79,28 @@ describe regexp_provider do
       regexp.to_s.should == '(?-mix:^.*(?>(?i-mx:test)).*$)'
     end
     
-    it 'should recognize a regexp match parameter as such (exact)' do
+    it 'should recognize a regexp match parameter as such (exact with slashes)' do
       regexp = editfile( :match => '/test/i', :exact => true ).send( :match_regex )
       regexp.is_a?(Regexp).should be_true
       regexp.to_s.should == '(?i-mx:test)'
+    end
+
+    it 'should recognize a multiline regexp match parameter as such (exact)' do
+      regexp = editfile( :match => "/bob\nsusan/m", :exact => true ).send( :match_regex )
+      regexp.is_a?(Regexp).should be_true
+      regexp.to_s.should == "(?m-ix:bob\nsusan)"
+    end
+
+    it 'should recognize a regexp match parameter as such (exact with %r{})' do
+      regexp = editfile( :match => "%r{/dev/sda}i", :exact => true ).send( :match_regex )
+      regexp.is_a?(Regexp).should be_true
+      regexp.to_s.should == '(?i-mx:\/dev\\/sda)'
+    end
+
+    it 'should recognize a regexp match parameter as such (exact with %r[])' do
+      regexp = editfile( :match => "%r[/dev/sda]i", :exact => true ).send( :match_regex )
+      regexp.is_a?(Regexp).should be_true
+      regexp.to_s.should == '(?i-mx:\/dev\\/sda)'
     end
 
     it 'should convert a string match parameter to a regexp' do

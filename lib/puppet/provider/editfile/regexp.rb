@@ -136,7 +136,7 @@ Puppet::Type.type(:editfile).provide(:regexp, :parent => Puppet::Provider) do
     # first character slash ==> we eval it
     begin
       Puppet.debug "Editfile::Regexp#match_regex?: Checking if '#{m}' is a regexp."
-      if m =~ %r{/.*/}
+      if m =~ %r{^/.*/|^%r}m
         Puppet.debug "Editfile::Regexp#match_regex?: Think so."
         m = eval(m)
       else
