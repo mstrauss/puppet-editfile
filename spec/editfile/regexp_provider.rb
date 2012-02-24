@@ -468,8 +468,15 @@ Match User username
       section = 'section1'
       entry = 'entry'
       value = 'fixed value'
-      match_regexp = '/(^\[%s\]\n)((^(?!%s)[^\[].*\n)*)(%s\s+=.+?\n)?/'
-      line_regexp = "[%s]\n\\2%s = %s\n"
+
+      # # WELL DONE! This one works, but explodes!
+      # match_regexp = '/(^\[%s\]\n)((^(?!%s)[^\[].*\n)*)(%s\s+=.+?\n)?/'
+
+      # Fix for the explosion???
+      # match_regexp = '/(?>^\[%s\]\n)((?>.*(?=^%s\s*=))?)((?>^%s\s*=.*?\n)?)(?>(.*?)(?=^\[|\Z))/m'
+      match_regexp = '/(?>^\[%s\]\n)(?# BLOCK 1:)((?>.*?(?=^%s\b|^\[))?)(?# BLOCK 2:)((?>^%s\b.*?\n)?)(?# BLOCK 3:)(.*?)(?=^\[|\Z)/m'
+      
+      line_regexp = "[%s]\n\\1%s = %s\n\\3"
       creates_regexp = '/^\[%s\]\n(^[^\[].*\n)*%s = %s$/'
       match = match_regexp % [section, entry, entry]
       line = line_regexp % [section, entry, value]
@@ -515,8 +522,8 @@ entry = fixed value
 '
         apply_ressource options
         expect_data '[section1]
-entry = fixed value
 entry2 = value2
+entry = fixed value
 [section2]
 # wrong section!
 entry = fixed value
@@ -545,7 +552,8 @@ entry = any other value'
         expect_data '[section2]
 entry = any other value
 [section1]
-entry = fixed value'
+entry = fixed value
+'
       end
 
       it 'should create section and value for non-existing section' do
@@ -561,6 +569,7 @@ entry = section2 value
 entry = section3 value
 [section1]
 entry = fixed value
+
 '
       end
 
@@ -568,6 +577,7 @@ entry = fixed value
         apply_ressource options
         expect_data '[section1]
 entry = fixed value
+
 '
       end
       
