@@ -31,5 +31,5 @@ end
 
 
 task :apply_example do
-  sh %{puppet apply --modulepath=/etc/puppet/modules --debug --noop doc/example_manifest.pp}
+  sh %{puppet apply --modulepath=/etc/puppet/modules --debug --trace doc/example_manifest.pp}
 end

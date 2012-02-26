@@ -1,0 +1,5 @@
+# a dummy postfix configuration
+bounce_queue_lifetime = 3h
+maximal_queue_lifetime = 1d
+smtpd_recipient_restrictions = permit_mynetworks
+inet_interfaces = all
