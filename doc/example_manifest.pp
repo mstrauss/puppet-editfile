@@ -24,6 +24,12 @@ editfile {
     ensure => "\ntext to insert\n",
     exact  => true,
     ;
+  'ip change':
+    path   => '/my/file/path',
+    match  => '8.8.8.8',
+    ensure => '10.10.10.10',
+    exact  => true,
+    ;
 }
 
 

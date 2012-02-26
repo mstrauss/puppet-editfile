@@ -48,6 +48,7 @@ Puppet::Type.newtype(:editfile) do
   end
   
   newparam(:match_is_string) do
+    desc "Set to 'true' if 'match' is a string."
   end
   
   newparam(:exact) do
