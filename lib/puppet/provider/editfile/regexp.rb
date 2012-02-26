@@ -133,17 +133,29 @@ Puppet::Type.type(:editfile).provide(:regexp, :parent => Puppet::Provider) do
       end
     end
     
-    # first character slash ==> we eval it
-    begin
-      Puppet.debug "Editfile::Regexp#match_regex?: Checking if '#{m}' is a regexp."
+    escaped = Regexp.escape(m)
+    if @resource[:match_is_string] == true
+      Puppet.debug "Editfile::Regexp#match_regex?: You said the 'match' parameter '#{m.inspect}' is a string => Escaping it for insertation in a regexp."
+      m = escaped
+    else
+      # first/last characters slash or beginning %r ==> we eval it
+      Puppet.debug "Editfile::Regexp#match_regex?: Checking if '#{m.inspect}' is a regexp."
       if m =~ %r{^/.*/|^%r}m
-        Puppet.debug "Editfile::Regexp#match_regex?: Think so."
-        m = eval(m)
+        Puppet.debug "Editfile::Regexp#match_regex?: Think so. Evaluating."
+        begin
+          m = eval(m)
+        rescue
+          raise Puppet::Error, "Unable to compile regular expression '#{m}'. Please specify a valid regexp for 'match'."
+        end
       else
-        Puppet.debug "Editfile::Regexp#match_regex?: Nope."
+        Puppet.debug "Editfile::Regexp#match_regex?: Looks like string. Checking if you made a mistake. THIS CHECK IS A SAFTEY NET AND MAY BE REMOVED IN FUTURE VERSIONS."
+        if escaped != m
+          raise Puppet::Error, "Please verify that the 'match' parameter ('#{m.inspect}') is NOT a regular expression and either: a) put it between slashes or b) use 'match_is_string => true'."
+        else
+          Puppet.debug "Editfile::Regexp#match_regex?: Nope. Escaping."
+          m = escaped
+        end
       end
-    rescue
-      raise Puppet::Error, "Unable to compile regular expression '#{m}'. Please specify a valid regexp for 'match'."
     end
     
     unless @resource[:exact]

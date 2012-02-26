@@ -47,6 +47,9 @@ Puppet::Type.newtype(:editfile) do
     desc "The text which should be handled by editfile.  Provide a regular expression."
   end
   
+  newparam(:match_is_string) do
+  end
+  
   newparam(:exact) do
     desc 'Shall we use exact matching? Exact matching means that all exact matches of the regular expression given through _match_ will be replaced with the text given in _ensure_ (using Ruby\'s String#gsub method).  Otherwise, _ensure_ will apply to whole file lines. See the example manifest for details.  Default value: false.'    
   end

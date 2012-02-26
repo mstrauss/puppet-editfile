@@ -43,6 +43,12 @@ def apply_ressource( options = {} )
   lambda { editfile( options ).send( send_method ) }.should_not raise_error
 end
 
+def apply_ressource_without_match
+  options = { :name => 'foo', :path => @tempfile, :ensure => 'This is the result line.' }
+  editfile( options ).exists?.should be_false
+  lambda { editfile( options ).create }.should_not raise_error
+end
+
 def apply_ressource_exists( options = {} )
   editfile( options ).exists?.should be_true
   lambda { editfile( options ).send( :create ) }.should raise_error(Puppet::DevError)
@@ -109,9 +115,15 @@ describe regexp_provider do
       regexp.to_s.should == '(?-mix:^.*(?>test).*$)'
     end
 
-    # it 'should abort when a string match looks like a regexp' do
-    #   lambda { editfile( :match => '^.*bla.*\n' ).create }.should raise_error( Puppet::Error )
-    # end
+    it 'should convert a string match parameter to an escaped regexp' do
+      regexp = editfile( :match => '.?[]/*{}\\', :match_is_string => true ).send( :match_regex )
+      regexp.is_a?(Regexp).should be_true
+      regexp.to_s.should == '(?-mix:^.*(?>\.\?\[\]\/\*\{\}\\\\).*$)'
+    end
+
+    it 'should abort when a string match looks like a regexp' do
+      lambda { editfile( :match => '^.*bla.*\n' ).create }.should raise_error( Puppet::Error )
+    end
     
   end
   
@@ -159,7 +171,7 @@ describe regexp_provider do
 
     it 'should append the line if no match is provided' do
       input_data "Test-File#{$/}This is the present line.#{$/}"
-      apply_ressource :match => :undef
+      apply_ressource_without_match
       expect_data "Test-File#{$/}This is the present line.#{$/}This is the result line.#{$/}"
     end
     
@@ -179,7 +191,7 @@ describe regexp_provider do
       
       describe 'without "creates"' do
         it 'should return false on exist? if we have NO match (and append the stripped ensure-line)' do
-          options = { :match => '^Line (.*)', :ensure => 'Result \1' }
+          options = { :match => '/^Line (.*)/', :ensure => 'Result \1' }
           input_data "Result 1#{$/}Result 2#{$/}Result 3#{$/}"
           apply_ressource options
           expect_data "Result 1#{$/}Result 2#{$/}Result 3#{$/}Result #{$/}"
@@ -188,7 +200,7 @@ describe regexp_provider do
       
       describe 'with "creates"' do
         it 'should return true on exist? if we have a match via "creates"' do
-          options = { :match => '^Line (.*)', :ensure => 'Result \1', :creates => '/^Result/' }
+          options = { :match => '/^Line (.*)/', :ensure => 'Result \1', :creates => '/^Result/' }
           input_data "Result 1#{$/}Result 2#{$/}Result 3#{$/}"
           editfile( options ).send( :line_has_backrefs? ).should be_true
           apply_ressource_exists options
@@ -196,7 +208,7 @@ describe regexp_provider do
         end
 
         it 'should return false on exist? if we have NO match via "creates" (and append the stripped ensure-line)' do
-          options = { :match => '^Line (.*)', :ensure => 'Result \1', :creates => '/^bla/' }
+          options = { :match => '/^Line (.*)/', :ensure => 'Result \1', :creates => '/^bla/' }
           input_data "Result 1#{$/}Result 2#{$/}Result 3#{$/}"
           editfile( options ).send( :line_has_backrefs? ).should be_true
           apply_ressource options
@@ -206,13 +218,13 @@ describe regexp_provider do
 
       it 'should be supported with exact matching' do
         input_data "Line 1#{$/}Line 2#{$/}Line 3#{$/}"
-        apply_ressource :match => '^Line (.*)\n', :ensure => "Result \\1\n", :exact => true
+        apply_ressource :match => '/^Line (.*)\n/', :ensure => "Result \\1\n", :exact => true
         expect_data "Result 1#{$/}Result 2#{$/}Result 3#{$/}"
       end
 
       it 'should be supported' do
         input_data "Line 1#{$/}Line 2#{$/}Line 3#{$/}"
-        apply_ressource :match => '^Line (.*)', :ensure => 'Result \1'
+        apply_ressource :match => '/^Line (.*)/', :ensure => 'Result \1'
         expect_data "Result 1#{$/}Result 2#{$/}Result 3#{$/}"
       end
       
@@ -231,13 +243,13 @@ describe regexp_provider do
     describe 'should append the line if no match is provided' do
       it 'without EOL at EOF' do
         input_data "Test-File#{$/}This is the present line."
-        apply_ressource :match => :undef
+        apply_ressource_without_match
         expect_data "Test-File#{$/}This is the present line.#{$/}This is the result line."
       end
 
       it 'with EOL at EOF' do
         input_data "Test-File#{$/}This is the present line.#{$/}"
-        apply_ressource :match => :undef
+        apply_ressource_without_match
         expect_data "Test-File#{$/}This is the present line.#{$/}This is the result line.#{$/}"
       end
     end
@@ -254,7 +266,7 @@ DAEMON_OPTS="-a :80 \
   -f config \
   -S entries"
 '
-      apply_ressource :match => '^DAEMON_OPTS\s?=\s?.+(\n\s+.+)*', :ensure => 'DAEMON_OPTS="-a :80 \
+      apply_ressource :match => '/^DAEMON_OPTS\s?=\s?.+(\n\s+.+)*/', :ensure => 'DAEMON_OPTS="-a :80 \
           -T localhost:6082 \
           -f /etc/varnish/default.vcl \
           -S /etc/varnish/secret -s malloc,1G"'
@@ -273,13 +285,13 @@ DAEMON_OPTS="-a :80 \
       
       it 'should handle exact matching well' do
         input_data "\# a comment line#{$/}UMASK\t002#{$/}"
-        apply_ressource :match => '^UMASK.*\n', :ensure => "UMASK\t022\n", :exact => true
+        apply_ressource :match => '/^UMASK.*\n/', :ensure => "UMASK\t022\n", :exact => true
         expect_data "\# a comment line#{$/}UMASK\t022#{$/}"
       end
 
       it 'should handle default matching well' do
         input_data "\# a comment line#{$/}UMASK\t002#{$/}"
-        apply_ressource :match => '^UMASK', :ensure => "UMASK\t022"
+        apply_ressource :match => '/^UMASK/', :ensure => "UMASK\t022"
         expect_data "\# a comment line#{$/}UMASK\t022#{$/}"
       end
       
@@ -287,7 +299,7 @@ DAEMON_OPTS="-a :80 \
     
     
     describe 'MatchUser example' do
-      regexp = '^Match User username(\n\s+.+)*'
+      regexp = '/^Match User username(\n\s+.+)*/'
       lines = 'Match User username
   ForceCommand internal-sftp
   ChrootDirectory /home/username
@@ -363,7 +375,7 @@ Match User otheruser
     
     
     describe 'SSLHonorCipherOrder example' do
-      regexp = '^(SSLHonorCipherOrder .+\n)?</IfModule>'
+      regexp = '/^(SSLHonorCipherOrder .+\n)?<\/IfModule>/'
       lines = "SSLHonorCipherOrder on\n</IfModule>"
 
       it 'should handle the SSLHonorCipherOrder missing example' do
@@ -383,7 +395,7 @@ Match User otheruser
     describe 'lookahead match' do
       
       after do
-        apply_ressource :match => '\n(PARAMETER=123\n)?(?=last line)', :ensure => "\nPARAMETER=123\n", :exact => true
+        apply_ressource :match => '/\n(PARAMETER=123\n)?(?=last line)/', :ensure => "\nPARAMETER=123\n", :exact => true
         expect_data "first line#{$/}PARAMETER=123#{$/}last line"
       end
 
