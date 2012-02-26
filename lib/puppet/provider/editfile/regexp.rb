@@ -150,7 +150,7 @@ Puppet::Type.type(:editfile).provide(:regexp, :parent => Puppet::Provider) do
       else
         Puppet.debug "Editfile::Regexp#match_regex?: Looks like string. Checking if you made a mistake. THIS CHECK IS A SAFTEY NET AND MAY BE REMOVED IN FUTURE VERSIONS."
         if escaped != m
-          raise Puppet::Error, "Please verify that the 'match' parameter ('#{m.inspect}') is NOT a regular expression and either: a) put it between slashes or b) use 'match_is_string => true'."
+          raise Puppet::Error, "Please verify that the 'match' parameter ('#{m.inspect}') is NOT a regular expression and either: a) put it between slashes if it is meant as regexp or b) use 'match_is_string => true' if it should be treated a string. THIS CHECK IS A SAFTEY NET AN MAY BE REMOVED IN FUTURE VERSIONS."
         else
           Puppet.debug "Editfile::Regexp#match_regex?: Nope. Escaping."
           m = escaped
