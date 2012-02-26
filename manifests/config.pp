@@ -36,7 +36,7 @@ define editfile::config( $path, $entry = false, $ensure, $sep = '=', $quote = fa
     if $ensure == absent {
       editfile { "$title":
         # we remove all matching entries, but not the comment lines
-        match  => "^${entry}${sep}",
+        match  => "/^${entry}${sep}/",
         ensure => absent,
       }
     } else {
