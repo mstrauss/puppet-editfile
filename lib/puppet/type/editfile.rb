@@ -62,6 +62,10 @@ Puppet::Type.newtype(:editfile) do
   newparam(:creates) do
     desc 'A regular expression which, when absent, causes the resource to apply.  This defaults to _ensure_.  Override to specify what will be created by the resource e.g. when you use backreferences in _ensure_.'
   end
+  
+  newparam(:no_fail_without_parent) do
+    desc 'Set to "true" to ignore failures because of missing parent directories. Note: The usual behavior would be to bring an error if the parent directory does not exist.'
+  end
 
   validate do
     self[:match] = :undef if self[:match].nil? or self[:match] == ''

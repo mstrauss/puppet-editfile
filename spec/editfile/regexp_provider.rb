@@ -134,6 +134,20 @@ describe regexp_provider do
       expect_data "This is the result line.\n"
     end
     
+    describe 'when parent directory is missing' do
+      it 'should fail' do
+        lambda {
+          editfile( :path => '/tmp/path/does/not/exist/file' ).send( :create )
+        }.should raise_error(Errno::ENOENT, "No such file or directory - /tmp/path/does/not/exist/file")
+      end
+      
+      it 'should not fail when "no_fail_without_parent"=true' do
+        lambda {
+          editfile( :path => '/tmp/path/does/not/exist/file', :no_fail_without_parent => true ).send( :create )
+        }.should_not raise_error
+      end
+    end
+    
     describe 'when match-regexp is found, but ensure-regexp is also found' do
       
       it 'should, by default, declare the resource present' do

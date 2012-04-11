@@ -199,6 +199,10 @@ Puppet::Type.type(:editfile).provide(:regexp, :parent => Puppet::Provider) do
 
   def myflush
     Puppet.debug "Editfile::Regexp#myflush: Flushing to file #{@resource[:path]}."
+    if !Pathname.new(@resource[:path]).parent.directory? and !!@resource[:no_fail_without_parent]
+      Puppet.debug "Editfile::Regexp#myflush: Parent directory missing and no_fail_without_parent=true. Doing nothing."
+      return false
+    end
     File.open( @resource[:path], "w" ) do |f|
       f.write( @data )
       f.close
