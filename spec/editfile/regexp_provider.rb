@@ -43,8 +43,8 @@ def apply_ressource( options = {} )
   lambda { editfile( options ).send( send_method ) }.should_not raise_error
 end
 
-def apply_ressource_without_match
-  options = { :name => 'foo', :path => @tempfile, :ensure => 'This is the result line.' }
+def apply_ressource_without_match( options = {} )
+  options = { :name => 'foo', :path => @tempfile, :ensure => 'This is the result line.' }.merge(options)
   editfile( options ).exists?.should be_false
   lambda { editfile( options ).create }.should_not raise_error
 end
@@ -182,17 +182,33 @@ describe regexp_provider do
       apply_ressource :match => 'Line', :ensure => 'Result'
       expect_data "Result#{$/}Result#{$/}Result#{$/}"
     end
-
-    it 'should append the line if no match is provided' do
-      input_data "Test-File#{$/}This is the present line.#{$/}"
-      apply_ressource_without_match
-      expect_data "Test-File#{$/}This is the present line.#{$/}This is the result line.#{$/}"
+    
+    describe :no_append => false do
+      it 'should append the line if no match is provided' do
+        input_data "Test-File#{$/}This is the present line.#{$/}"
+        apply_ressource_without_match
+        expect_data "Test-File#{$/}This is the present line.#{$/}This is the result line.#{$/}"
+      end
+    
+      it 'should append the line if no match is provided' do
+        input_data "Test-File#{$/}This is the present line.#{$/}"
+        apply_ressource
+        expect_data "Test-File#{$/}This is the present line.#{$/}This is the result line.#{$/}"
+      end
     end
     
-    it 'should append the line if no match is provided' do
-      input_data "Test-File#{$/}This is the present line.#{$/}"
-      apply_ressource
-      expect_data "Test-File#{$/}This is the present line.#{$/}This is the result line.#{$/}"
+    describe :no_append => true do
+      it 'should not append the line if no match is provided' do
+        input_data "Test-File#{$/}This is the present line.#{$/}"
+        apply_ressource_without_match( :no_append => true )
+        expect_data "Test-File#{$/}This is the present line.#{$/}"
+      end
+    
+      it 'should append the line if no match is provided' do
+        input_data "Test-File#{$/}This is the present line.#{$/}"
+        apply_ressource( :no_append => true )
+        expect_data "Test-File#{$/}This is the present line.#{$/}"
+      end
     end
     
     describe 'with backreferences' do
@@ -253,18 +269,36 @@ describe regexp_provider do
       input_data "Line 1#{$/}Line 2#{$/}Line 3#{$/}"
       editfile( :ensure => "Line 3#{$/}Line 2").exists?.should be_false
     end
-
-    describe 'should append the line if no match is provided' do
-      it 'without EOL at EOF' do
-        input_data "Test-File#{$/}This is the present line."
-        apply_ressource_without_match
-        expect_data "Test-File#{$/}This is the present line.#{$/}This is the result line."
+    
+    describe :no_append => false do
+      describe 'should append the line if no match is provided' do
+        it 'without EOL at EOF' do
+          input_data "Test-File#{$/}This is the present line."
+          apply_ressource_without_match
+          expect_data "Test-File#{$/}This is the present line.#{$/}This is the result line."
+        end
+        
+        it 'with EOL at EOF' do
+          input_data "Test-File#{$/}This is the present line.#{$/}"
+          apply_ressource_without_match
+          expect_data "Test-File#{$/}This is the present line.#{$/}This is the result line.#{$/}"
+        end
       end
-
-      it 'with EOL at EOF' do
-        input_data "Test-File#{$/}This is the present line.#{$/}"
-        apply_ressource_without_match
-        expect_data "Test-File#{$/}This is the present line.#{$/}This is the result line.#{$/}"
+    end
+    
+    describe :no_append => true do
+      describe 'should append the line if no match is provided' do
+        it 'without EOL at EOF' do
+          input_data "Test-File#{$/}This is the present line."
+          apply_ressource_without_match( :no_append => true )
+          expect_data "Test-File#{$/}This is the present line."
+        end
+        
+        it 'with EOL at EOF' do
+          input_data "Test-File#{$/}This is the present line.#{$/}"
+          apply_ressource_without_match( :no_append => true )
+          expect_data "Test-File#{$/}This is the present line.#{$/}"
+        end
       end
     end
     

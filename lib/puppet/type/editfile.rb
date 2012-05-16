@@ -66,6 +66,10 @@ Puppet::Type.newtype(:editfile) do
   newparam(:no_fail_without_parent) do
     desc 'Set to "true" to ignore failures because of missing parent directories. Note: The usual behavior would be to bring an error if the parent directory does not exist.'
   end
+  
+  newparam(:no_append) do
+    desc 'Set to "true" to not append anything to the end of file.'
+  end
 
   validate do
     self[:match] = :undef if self[:match].nil? or self[:match] == ''

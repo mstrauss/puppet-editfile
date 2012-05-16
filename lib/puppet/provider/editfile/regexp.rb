@@ -16,6 +16,8 @@ Puppet::Type.type(:editfile).provide(:regexp, :parent => Puppet::Provider) do
     if matches_found?
       Puppet.debug "Editfile::Regexp#create: Replacing #{match_regex} with '#{line}'."
       @data.gsub!( match_regex, line )
+    elsif @resource[:no_append] == true
+      Puppet.debug "Editfile::Regexp#create: Not appending beaucse no_append=true."
     else
       # no match found ==> append at end of file
       Puppet.debug "Editfile::Regexp#create: Appending '#{line( :remove_break => true, :with_backrefs => false )}'"
