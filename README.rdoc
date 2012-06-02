@@ -1,3 +1,5 @@
+{<img src="https://secure.travis-ci.org/mstrauss/puppet-editfile.png?branch=master" alt="Build Status" />}[http://travis-ci.org/mstrauss/puppet-editfile]
+
 = README
 
 _editfile_ is a simple Puppet module to edit files through Puppet manifests.  It is intended to be a Ruby-native replacement for Augeas[http://augeas.net].
