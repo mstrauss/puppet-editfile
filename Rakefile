@@ -17,9 +17,7 @@ Dir["#{File.dirname(__FILE__)}/tasks/rake/*.rake"].each { |f| load(f) }
 #     pkg.package_files = FILES.to_a
 # end
 
-task :default do
-    sh %{rake -T}
-end
+task :default => :spec
 
 # desc "Create the tarball and the gem - use when releasing"
 # task :puppetpackages => [:create_gem, :package]
