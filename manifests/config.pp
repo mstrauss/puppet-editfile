@@ -12,7 +12,7 @@
 # @param[String]  $ensure : set the configuration entry to this value, or use 'absent' to remove the entry $entry
 # @param[String]  $sep    : the separator to use, e.g. set to ' = '
 # @param[Boolean] $quote  : shall the value be quoted, like >> ENTRY = "value" <<
-define editfile::config( $path, $entry = false, $ensure, $sep = '=', $quote = false ) {
+define editfile::config( $path, $entry = false, $ensure, $sep = '=', $quote = false, $no_fail_without_parent = false ) {
 
   if $entry == false {
 
@@ -49,6 +49,7 @@ define editfile::config( $path, $entry = false, $ensure, $sep = '=', $quote = fa
         # if there is no match, editfile automatically appends our entry at EOF
         match  => "/^(#?\s*${entry}\s?(?!.*^${entry})|${entry}\s?)/m",
         ensure => $_ensure,
+        no_fail_without_parent => $no_fail_without_parent,
       }
       
     }
