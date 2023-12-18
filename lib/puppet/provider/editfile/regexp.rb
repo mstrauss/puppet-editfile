@@ -76,7 +76,7 @@ Puppet::Type.type(:editfile).provide(:regexp, :parent => Puppet::Provider) do
   
   def matches_found?( regexp = match_regex )
     Puppet.debug "Editfile::Regexp#matches_found?: Checking for '#{regexp.to_s}' in file '#{@resource[:path]}'."
-    if File.exists?( @resource[:path] )
+    if File.exist?( @resource[:path] )
       Puppet.debug "Editfile::Regexp#matches_found?: File exists."
       status = ( read_file_as_string =~ regexp )
       Puppet.debug( "Editfile::Regexp#matches_found?: " + ( status ? "Match found at position: #{status}" : "No match found." ) )
